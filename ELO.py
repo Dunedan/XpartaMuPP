@@ -39,32 +39,32 @@ anti_inflation = 0.015
 
 ############ Functions ############
 def get_rating_adjustment(rating, opponent_rating, games_played, opponent_games_played, result):
-  """
-    Calculates the rating adjustment after a 1v1 game finishes using simplified ELO.
+    """
+      Calculates the rating adjustment after a 1v1 game finishes using simplified ELO.
 
-    Arguments:
-      rating, opponent_rating - Ratings of the players before this game.
-      games_played, opponent_games_played - Number of games each player has played
-        before this game.
-      result - 1 for the first player (rating, games_played) won, 0 for draw, or
-        -1 for the second player (opponent_rating, opponent_games_played) won.
+      Arguments:
+        rating, opponent_rating - Ratings of the players before this game.
+        games_played, opponent_games_played - Number of games each player has played
+          before this game.
+        result - 1 for the first player (rating, games_played) won, 0 for draw, or
+          -1 for the second player (opponent_rating, opponent_games_played) won.
 
-    Returns:
-      The integer that should be subtracted from the loser's rating and added
-      to the winner's rating to get their new ratings.
+      Returns:
+        The integer that should be subtracted from the loser's rating and added
+        to the winner's rating to get their new ratings.
 
-    TODO: Team games.
-  """
-  player_volatility = (min(games_played, volatility_constant) / volatility_constant + 0.25) / 1.25
-  rating_k_factor = 50.0 * (min(rating, elo_k_factor_constant_rating) / elo_k_factor_constant_rating + 1.0) / 2.0
-  volatility = rating_k_factor * player_volatility
-  difference = opponent_rating - rating
-  if result == 1:
-    return round(max(0, (difference + result * elo_sure_win_difference) / volatility - anti_inflation))
-  elif result == -1:
-    return round(min(0, (difference + result * elo_sure_win_difference) / volatility - anti_inflation))
-  else:
-    return round(difference / volatility - anti_inflation)
+      TODO: Team games.
+    """
+    player_volatility = (min(games_played, volatility_constant) / volatility_constant + 0.25) / 1.25
+    rating_k_factor = 50.0 * (min(rating, elo_k_factor_constant_rating) / elo_k_factor_constant_rating + 1.0) / 2.0
+    volatility = rating_k_factor * player_volatility
+    difference = opponent_rating - rating
+    if result == 1:
+        return round(max(0, (difference + result * elo_sure_win_difference) / volatility - anti_inflation))
+    elif result == -1:
+        return round(min(0, (difference + result * elo_sure_win_difference) / volatility - anti_inflation))
+    else:
+        return round(difference / volatility - anti_inflation)
 
 # Inflation test - A slightly negative is better than a slightly positive
 # Lower rated players stop playing more often than higher rated players
