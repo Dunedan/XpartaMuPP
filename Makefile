@@ -7,7 +7,7 @@ all : ${module}
 %.beam : %.erl
 	erlc -I ${include_dir} -pz ${ebin_dir} $<
 
-install : 
+install :
 	mv ${module} ${ebin_dir}
 
 clean :

@@ -12,7 +12,7 @@ Install ejabberd and the erlang compiler
 
 Configure it:
 
-    # dpkg-reconfigure ejabberd 
+    # dpkg-reconfigure ejabberd
 
 Set the domain name (e.g. localhost if you installed it on your development computer) and add an
 admin user.

@@ -41,7 +41,7 @@ on_filter_packet({From, To, Packet} = Input) ->
       allow ->
         {_,SElement,LPacketInfo,LPacketQuery} = Packet,
         if SElement == "iq" ->
-          %% Get iq type (get/set/result...). 
+          %% Get iq type (get/set/result...).
           {_, SType} = lists:keyfind("type",1,LPacketInfo),
           if SType == "set" ->
             %% Get the sender's IP for later.
