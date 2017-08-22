@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""Copyright (C) 2016 Wildfire Games.
- * This file is part of 0 A.D.
- *
- * 0 A.D. is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * (at your option) any later version.
- *
- * 0 A.D. is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
-"""
 
-import logging, time, traceback
+# Copyright (C) 2017 Wildfire Games.
+# This file is part of 0 A.D.
+#
+# 0 A.D. is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# 0 A.D. is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
+
+import logging
+import time
+import traceback
 from optparse import OptionParser
 
 import sleekxmpp
@@ -26,155 +27,159 @@ from sleekxmpp.xmlstream import ElementBase, register_stanza_plugin, ET
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 
-## Class to tracks all games in the lobby ##
+
 class GameList():
+    """Class to tracks all games in the lobby."""
+
     def __init__(self):
-        self.gameList = {}
-    def addGame(self, JID, data):
-        """
-          Add a game
-        """
+        self.game_list = {}
+
+    def add_game(self, jid, data):
+        """Add a game."""
         data['players-init'] = data['players']
         data['nbp-init'] = data['nbp']
         data['state'] = 'init'
-        self.gameList[str(JID)] = data
-    def removeGame(self, JID):
-        """
-          Remove a game attached to a JID
-        """
-        del self.gameList[str(JID)]
-    def getAllGames(self):
-        """
-          Returns all games
-        """
-        return self.gameList
-    def changeGameState(self, JID, data):
-        """
-          Switch game state between running and waiting
-        """
-        JID = str(JID)
-        if JID in self.gameList:
-            if self.gameList[JID]['nbp-init'] > data['nbp']:
-                logging.debug("change game (%s) state from %s to %s", JID, self.gameList[JID]['state'], 'waiting')
-                self.gameList[JID]['state'] = 'waiting'
-            else:
-                logging.debug("change game (%s) state from %s to %s", JID, self.gameList[JID]['state'], 'running')
-                self.gameList[JID]['state'] = 'running'
-            self.gameList[JID]['nbp'] = data['nbp']
-            self.gameList[JID]['players'] = data['players']
-            if 'startTime' not in self.gameList[JID]:
-                self.gameList[JID]['startTime'] = str(round(time.time()))
+        self.game_list[str(jid)] = data
 
-## Class for custom player stanza extension ##
+    def remove_game(self, jid):
+        """Remove a game attached to a JID."""
+        del self.game_list[str(jid)]
+
+    def get_all_games(self):
+        """Return all games."""
+        return self.game_list
+
+    def change_game_state(self, jid, data):
+        """Switch game state between running and waiting."""
+        jid = str(jid)
+        if jid in self.game_list:
+            if self.game_list[jid]['nbp-init'] > data['nbp']:
+                logging.debug("change game (%s) state from %s to %s", jid,
+                              self.game_list[jid]['state'], 'waiting')
+                self.game_list[jid]['state'] = 'waiting'
+            else:
+                logging.debug("change game (%s) state from %s to %s", jid,
+                              self.game_list[jid]['state'], 'running')
+                self.game_list[jid]['state'] = 'running'
+            self.game_list[jid]['nbp'] = data['nbp']
+            self.game_list[jid]['players'] = data['players']
+            if 'startTime' not in self.game_list[jid]:
+                self.game_list[jid]['startTime'] = str(round(time.time()))
+
+
 class PlayerXmppPlugin(ElementBase):
+    """Class for custom player stanza extension."""
+
     name = 'query'
     namespace = 'jabber:iq:player'
     interfaces = set(('online'))
     sub_interfaces = interfaces
     plugin_attrib = 'player'
 
-    def addPlayerOnline(self, player):
-        playerXml = ET.fromstring("<online>%s</online>" % player)
-        self.xml.append(playerXml)
+    def add_player_online(self, player):
+        self.xml.append(ET.fromstring("<online>%s</online>" % player))
 
-## Class for custom gamelist stanza extension ##
+
+class BoardListXmppPlugin(ElementBase):
+    """Class for custom boardlist and ratinglist stanza extension."""
+
+    name = 'query'
+    namespace = 'jabber:iq:boardlist'
+    interfaces = set(('board', 'command', 'recipient'))
+    sub_interfaces = interfaces
+    plugin_attrib = 'boardlist'
+
+    def add_command(self, command):
+        self.xml.append(ET.fromstring("<command>%s</command>" % command))
+
+    def add_recipient(self, recipient):
+        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
+
+    def add_item(self, name, rating):
+        self.xml.append(ET.Element("board", {"name": name, "rating": rating}))
+
+
+class GameReportXmppPlugin(ElementBase):
+    """Class for custom gamereport stanza extension."""
+
+    name = 'report'
+    namespace = 'jabber:iq:gamereport'
+    plugin_attrib = 'gamereport'
+    interfaces = ('game', 'sender')
+    sub_interfaces = interfaces
+
+    def add_sender(self, sender):
+        self.xml.append(ET.fromstring("<sender>%s</sender>" % sender))
+
+    def add_game(self, gr):
+        self.xml.append(ET.fromstring(str(gr)).find('{%s}game' % self.namespace))
+
+    def get_game(self):
+        """Required to parse incoming stanzas with this extension."""
+        game = self.xml.find('{%s}game' % self.namespace)
+        data = {}
+        for key, item in game.items():
+            data[key] = item
+        return data
+
+
+class ProfileXmppPlugin(ElementBase):
+    """Class for custom profile."""
+
+    name = 'query'
+    namespace = 'jabber:iq:profile'
+    interfaces = set(('profile', 'command', 'recipient'))
+    sub_interfaces = interfaces
+    plugin_attrib = 'profile'
+
+    def add_command(self, command):
+        self.xml.append(ET.fromstring("<command>%s</command>" % command))
+
+    def add_recipient(self, recipient):
+        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
+
+    def add_item(self, player, rating, highest_rating, rank, total_games_played, wins, losses):
+        item_xml = ET.Element("profile", {"player": player, "rating": rating,
+                                          "highestRating": highest_rating, "rank": rank,
+                                          "totalGamesPlayed": total_games_played, "wins": wins,
+                                          "losses": losses})
+        self.xml.append(item_xml)
+
+
 class GameListXmppPlugin(ElementBase):
+    """Class for custom gamelist stanza extension."""
+
     name = 'query'
     namespace = 'jabber:iq:gamelist'
     interfaces = set(('game', 'command'))
     sub_interfaces = interfaces
     plugin_attrib = 'gamelist'
 
-    def addGame(self, data):
-        itemXml = ET.Element("game", data)
-        self.xml.append(itemXml)
+    def add_game(self, data):
+        self.xml.append(ET.Element("game", data))
 
-    def getGame(self):
-        """
-          Required to parse incoming stanzas with this
-            extension.
-        """
+    def get_game(self):
+        """Required to parse incoming stanzas with this extension."""
         game = self.xml.find('{%s}game' % self.namespace)
         data = {}
         for key, item in game.items():
             data[key] = item
         return data
 
-## Class for custom boardlist and ratinglist stanza extension ##
-class BoardListXmppPlugin(ElementBase):
-    name = 'query'
-    namespace = 'jabber:iq:boardlist'
-    interfaces = set(('board', 'command', 'recipient'))
-    sub_interfaces = interfaces
-    plugin_attrib = 'boardlist'
-    def addCommand(self, command):
-        commandXml = ET.fromstring("<command>%s</command>" % command)
-        self.xml.append(commandXml)
-    def addRecipient(self, recipient):
-        recipientXml = ET.fromstring("<recipient>%s</recipient>" % recipient)
-        self.xml.append(recipientXml)
-    def addItem(self, name, rating):
-        itemXml = ET.Element("board", {"name": name, "rating": rating})
-        self.xml.append(itemXml)
 
-## Class for custom gamereport stanza extension ##
-class GameReportXmppPlugin(ElementBase):
-    name = 'report'
-    namespace = 'jabber:iq:gamereport'
-    plugin_attrib = 'gamereport'
-    interfaces = ('game', 'sender')
-    sub_interfaces = interfaces
-    def addSender(self, sender):
-        senderXml = ET.fromstring("<sender>%s</sender>" % sender)
-        self.xml.append(senderXml)
-    def addGame(self, gr):
-        game = ET.fromstring(str(gr)).find('{%s}game' % self.namespace)
-        self.xml.append(game)
-    def getGame(self):
-        """
-          Required to parse incoming stanzas with this
-            extension.
-        """
-        game = self.xml.find('{%s}game' % self.namespace)
-        data = {}
-        for key, item in game.items():
-            data[key] = item
-        return data
-
-## Class for custom profile ##
-class ProfileXmppPlugin(ElementBase):
-    name = 'query'
-    namespace = 'jabber:iq:profile'
-    interfaces = set(('profile', 'command', 'recipient'))
-    sub_interfaces = interfaces
-    plugin_attrib = 'profile'
-    def addCommand(self, command):
-        commandXml = ET.fromstring("<command>%s</command>" % command)
-        self.xml.append(commandXml)
-    def addRecipient(self, recipient):
-        recipientXml = ET.fromstring("<recipient>%s</recipient>" % recipient)
-        self.xml.append(recipientXml)
-    def addItem(self, player, rating, highestRating, rank, totalGamesPlayed, wins, losses):
-        itemXml = ET.Element("profile", {"player": player, "rating": rating, "highestRating": highestRating,
-                                          "rank" : rank, "totalGamesPlayed" : totalGamesPlayed, "wins" : wins,
-                                          "losses" : losses})
-        self.xml.append(itemXml)
-
-## Main class which handles IQ data and sends new data ##
 class XpartaMuPP(sleekxmpp.ClientXMPP):
-    """
-    A simple list provider
-    """
+    """Main class which handles IQ data and sends new data."""
+
     def __init__(self, sjid, password, room, nick, ratingsbot):
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
         self.sjid = sjid
         self.room = room
         self.nick = nick
-        self.ratingsBotWarned = False
+        self.ratings_bot_warned = False
 
-        self.ratingsBot = ratingsbot
+        self.ratings_bot = ratingsbot
         # Game collection
-        self.gameList = GameList()
+        self.game_list = GameList()
 
         # Store mapping of nicks and XmppIDs, attached via presence stanza
         self.nicks = {}
@@ -187,26 +192,16 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Player',
-                                           StanzaPath('iq/player'),
-                                           self.iqhandler,
-                                           instream=True))
-        self.register_handler(Callback('Iq Gamelist',
-                                           StanzaPath('iq/gamelist'),
-                                           self.iqhandler,
-                                           instream=True))
-        self.register_handler(Callback('Iq Boardlist',
-                                           StanzaPath('iq/boardlist'),
-                                           self.iqhandler,
-                                           instream=True))
-        self.register_handler(Callback('Iq GameReport',
-                                           StanzaPath('iq/gamereport'),
-                                           self.iqhandler,
-                                           instream=True))
-        self.register_handler(Callback('Iq Profile',
-                                           StanzaPath('iq/profile'),
-                                           self.iqhandler,
-                                           instream=True))
+        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'), self.iqhandler,
+                                       instream=True))
+        self.register_handler(Callback('Iq Gamelist', StanzaPath('iq/gamelist'), self.iqhandler,
+                                       instream=True))
+        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'), self.iqhandler,
+                                       instream=True))
+        self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
+                                       self.iqhandler, instream=True))
+        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'), self.iqhandler,
+                                       instream=True))
 
         self.add_event_handler("session_start", self.start)
         self.add_event_handler("muc::%s::got_online" % self.room, self.muc_online)
@@ -214,119 +209,108 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.add_event_handler("groupchat_message", self.muc_message)
 
     def start(self, event):
-        """
-        Process the session_start event
-        """
+        """Process the session_start event."""
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
         self.send_presence()
         self.get_roster()
         logging.info("XpartaMuPP started")
 
     def muc_online(self, presence):
-        """
-        Process presence stanza from a chat room.
-        """
-        if self.ratingsBot in self.nicks:
-            self.relayRatingListRequest(self.ratingsBot)
-        self.relayPlayerOnline(presence['muc']['jid'])
+        """Process presence stanza from a chat room."""
+        if self.ratings_bot in self.nicks:
+            self.relay_rating_list_request(self.ratings_bot)
+        self.relay_player_online(presence['muc']['jid'])
         if presence['muc']['nick'] != self.nick:
             # If it doesn't already exist, store player JID mapped to their nick.
             if str(presence['muc']['jid']) not in self.nicks:
                 self.nicks[str(presence['muc']['jid'])] = presence['muc']['nick']
             # Check the jid isn't already in the lobby.
             # Send Gamelist to new player.
-            self.sendGameList(presence['muc']['jid'])
-            logging.debug("Client '%s' connected with a nick of '%s'." %(presence['muc']['jid'], presence['muc']['nick']))
+            self.send_game_list(presence['muc']['jid'])
+            logging.debug("Client '%s' connected with a nick of '%s'.", presence['muc']['jid'],
+                          presence['muc']['nick'])
 
     def muc_offline(self, presence):
-        """
-        Process presence stanza from a chat room.
-        """
+        """Process presence stanza from a chat room."""
         # Clean up after a player leaves
         if presence['muc']['nick'] != self.nick:
             # Delete any games they were hosting.
-            for JID in self.gameList.getAllGames():
-                if JID == str(presence['muc']['jid']):
-                    self.gameList.removeGame(JID)
-                    self.sendGameList()
+            for jid in self.game_list.get_all_games():
+                if jid == str(presence['muc']['jid']):
+                    self.game_list.remove_game(jid)
+                    self.send_game_list()
                     break
             # Remove them from the local player list.
             self.lastLeft = str(presence['muc']['jid'])
             if str(presence['muc']['jid']) in self.nicks:
                 del self.nicks[str(presence['muc']['jid'])]
-        if presence['muc']['nick'] == self.ratingsBot:
-            self.ratingsBotWarned = False
+        if presence['muc']['nick'] == self.ratings_bot:
+            self.ratings_bot_warned = False
 
     def muc_message(self, msg):
-        """
-        Process new messages from the chatroom.
-        """
+        """Process new messages from the chatroom."""
         if msg['mucnick'] != self.nick and self.nick.lower() in msg['body'].lower():
             self.send_message(mto=msg['from'].bare,
-                              mbody="I am the administrative bot in this lobby and cannot participate in any games.",
+                              mbody="I am the administrative bot in this lobby and cannot "
+                                    "participate in any games.",
                               mtype='groupchat')
 
     def iqhandler(self, iq):
-        """
-        Handle the custom stanzas
-          This method should be very robust because we could receive anything
+        """Handle the custom stanzas.
+
+        This method should be very robust because we could receive anything
         """
         if iq['type'] == 'error':
             logging.error('iqhandler error' + iq['error']['condition'])
             #self.disconnect()
         elif iq['type'] == 'get':
-            """
-            Request lists.
-            """
+            # Request lists.
             # Send lists/register on leaderboard; depreciated once muc_online
             #  can send lists/register automatically on joining the room.
             if 'boardlist' in iq.plugins:
                 command = iq['boardlist']['command']
                 try:
-                    self.relayBoardListRequest(iq['from'])
+                    self.relay_board_list_request(iq['from'])
                 except:
                     traceback.print_exc()
-                    logging.error("Failed to process leaderboardlist request from %s" % iq['from'].bare)
+                    logging.error("Failed to process leaderboardlist request from %s",
+                                  iq['from'].bare)
             elif 'profile' in iq.plugins:
                 command = iq['profile']['command']
                 try:
-                    self.relayProfileRequest(iq['from'], command)
+                    self.relay_profile_request(iq['from'], command)
                 except:
-                    pass # TODO needed?
+                    pass
             else:
-                logging.error("Unknown 'get' type stanza request from %s" % iq['from'].bare)
+                logging.error("Unknown 'get' type stanza request from %s", iq['from'].bare)
         elif iq['type'] == 'result':
-            """
-            Iq successfully received
-            """
+            # Iq successfully received
             if 'boardlist' in iq.plugins:
                 recipient = iq['boardlist']['recipient']
-                self.relayBoardList(iq['boardlist'], recipient)
+                self.relay_board_list(iq['boardlist'], recipient)
             elif 'profile' in iq.plugins:
                 recipient = iq['profile']['recipient']
-                player =  iq['profile']['command']
-                self.relayProfile(iq['profile'], player, recipient)
+                player = iq['profile']['command']
+                self.relay_profile(iq['profile'], player, recipient)
             else:
-                pass # TODO error/warn?
+                pass  # TODO error/warn?
         elif iq['type'] == 'set':
             if 'gamelist' in iq.plugins:
-                """
-                Register-update / unregister a game
-                """
+                # Register-update / unregister a game
                 command = iq['gamelist']['command']
                 if command == 'register':
                     # Add game
                     try:
-                        self.gameList.addGame(iq['from'], iq['gamelist']['game'])
-                        self.sendGameList()
+                        self.game_list.add_game(iq['from'], iq['gamelist']['game'])
+                        self.send_game_list()
                     except:
                         traceback.print_exc()
                         logging.error("Failed to process game registration data")
                 elif command == 'unregister':
                     # Remove game
                     try:
-                        self.gameList.removeGame(iq['from'])
-                        self.sendGameList()
+                        self.game_list.remove_game(iq['from'])
+                        self.send_game_list()
                     except:
                         traceback.print_exc()
                         logging.error("Failed to process game unregistration data")
@@ -334,110 +318,107 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 elif command == 'changestate':
                     # Change game status (waiting/running)
                     try:
-                        self.gameList.changeGameState(iq['from'], iq['gamelist']['game'])
-                        self.sendGameList()
+                        self.game_list.change_game_state(iq['from'], iq['gamelist']['game'])
+                        self.send_game_list()
                     except:
                         traceback.print_exc()
                         logging.error("Failed to process changestate data")
                 else:
-                    logging.error("Failed to process command '%s' received from %s" % command, iq['from'].bare)
+                    logging.error("Failed to process command '%s' received from %s", command,
+                                  iq['from'].bare)
             elif 'gamereport' in iq.plugins:
-                """
-                Client is reporting end of game statistics
-                """
+                # Client is reporting end of game statistics
                 try:
-                    self.relayGameReport(iq['gamereport'], iq['from'])
+                    self.relay_game_report(iq['gamereport'], iq['from'])
                 except:
                     traceback.print_exc()
-                    logging.error("Failed to update game statistics for %s" % iq['from'].bare)
+                    logging.error("Failed to update game statistics for %s", iq['from'].bare)
         else:
-            logging.error("Failed to process stanza type '%s' received from %s" % iq['type'], iq['from'].bare)
+            logging.error("Failed to process stanza type '%s' received from %s", iq['type'],
+                          iq['from'].bare)
 
-    def sendGameList(self, to = ""):
+    def send_game_list(self, to=""):
+        """Send a massive stanza with the whole game list.
+
+        If no target is passed the gamelist is broadcasted to all
+        clients.
         """
-          Send a massive stanza with the whole game list.
-          If no target is passed the gamelist is broadcasted
-            to all clients.
-        """
-        games = self.gameList.getAllGames()
+        games = self.game_list.get_all_games()
         if to == "":
-            for JID in list(self.nicks):
+            for jid in list(self.nicks):
                 stz = GameListXmppPlugin()
 
-                ## Pull games and add each to the stanza
-                for JIDs in games:
-                    g = games[JIDs]
-                    stz.addGame(g)
+                # Pull games and add each to the stanza
+                for jids in games:
+                    g = games[jids]
+                    stz.add_game(g)
 
-                ## Set additional IQ attributes
+                # Set additional IQ attributes
                 iq = self.Iq()
                 iq['type'] = 'result'
-                iq['to'] = JID
+                iq['to'] = jid
                 iq.setPayload(stz)
 
-                ## Try sending the stanza
+                # Try sending the stanza
                 try:
                     iq.send(block=False, now=True)
                 except:
                     logging.error("Failed to send game list")
         else:
-            ## Check recipient exists
+            # Check recipient exists
             if str(to) not in self.nicks:
-                logging.error("No player with the XmPP ID '%s' known to send gamelist to." % str(to))
+                logging.error("No player with the XmPP ID '%s' known to send gamelist to.",
+                              str(to))
                 return
             stz = GameListXmppPlugin()
 
-            ## Pull games and add each to the stanza
-            for JIDs in games:
-                g = games[JIDs]
-                stz.addGame(g)
+            # Pull games and add each to the stanza
+            for jids in games:
+                g = games[jids]
+                stz.add_game(g)
 
-            ## Set additional IQ attributes
+            # Set additional IQ attributes
             iq = self.Iq()
             iq['type'] = 'result'
             iq['to'] = to
             iq.setPayload(stz)
 
-            ## Try sending the stanza
+            # Try sending the stanza
             try:
                 iq.send(block=False, now=True)
             except:
                 logging.error("Failed to send game list")
 
-    def relayBoardListRequest(self, recipient):
-        """
-          Send a boardListRequest to EcheLOn.
-        """
-        to = self.ratingsBot
+    def relay_board_list_request(self, recipient):
+        """Send a boardListRequest to EcheLOn."""
+        to = self.ratings_bot
         if to not in self.nicks:
-            self.warnRatingsBotOffline()
+            self.warn_ratings_bot_offline()
             return
         stz = BoardListXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'get'
-        stz.addCommand('getleaderboard')
-        stz.addRecipient(recipient)
+        stz.add_command('getleaderboard')
+        stz.add_recipient(recipient)
         iq.setPayload(stz)
-        ## Set additional IQ attributes
+        # Set additional IQ attributes
         iq['to'] = to
-        ## Try sending the stanza
+        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
             logging.error("Failed to send leaderboard list request")
 
-    def relayRatingListRequest(self, recipient):
-        """
-          Send a ratingListRequest to EcheLOn.
-        """
-        to = self.ratingsBot
+    def relay_rating_list_request(self, recipient):
+        """Send a ratingListRequest to EcheLOn."""
+        to = self.ratings_bot
         if to not in self.nicks:
-            self.warnRatingsBotOffline()
+            self.warn_ratings_bot_offline()
             return
         stz = BoardListXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'get'
-        stz.addCommand('getratinglist')
+        stz.add_command('getratinglist')
         iq.setPayload(stz)
         ## Set additional IQ attributes
         iq['to'] = to
@@ -447,90 +428,84 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except:
             logging.error("Failed to send rating list request")
 
-    def relayProfileRequest(self, recipient, player):
-        """
-          Send a profileRequest to EcheLOn.
-        """
-        to = self.ratingsBot
+    def relay_profile_request(self, recipient, player):
+        """Send a profileRequest to EcheLOn."""
+        to = self.ratings_bot
         if to not in self.nicks:
-            self.warnRatingsBotOffline()
+            self.warn_ratings_bot_offline()
             return
         stz = ProfileXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'get'
-        stz.addCommand(player)
-        stz.addRecipient(recipient)
+        stz.add_command(player)
+        stz.add_recipient(recipient)
         iq.setPayload(stz)
-        ## Set additional IQ attributes
+        # Set additional IQ attributes
         iq['to'] = to
-        ## Try sending the stanza
+        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
             logging.error("Failed to send profile request")
 
-    def relayPlayerOnline(self, jid):
-        """
-          Tells EcheLOn that someone comes online.
-        """
-        ## Check recipient exists
-        to = self.ratingsBot
+    def relay_player_online(self, jid):
+        """Tells EcheLOn that someone comes online."""
+        # Check recipient exists
+        to = self.ratings_bot
         if to not in self.nicks:
             return
         stz = PlayerXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'set'
-        stz.addPlayerOnline(jid)
+        stz.add_player_online(jid)
         iq.setPayload(stz)
-        ## Set additional IQ attributes
+        # Set additional IQ attributes
         iq['to'] = to
-        ## Try sending the stanza
+        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
             logging.error("Failed to send player muc online")
 
-    def relayGameReport(self, data, sender):
-        """
-          Relay a game report to EcheLOn.
-        """
-        to = self.ratingsBot
+    def relay_game_report(self, data, sender):
+        """Relay a game report to EcheLOn."""
+        to = self.ratings_bot
         if to not in self.nicks:
-            self.warnRatingsBotOffline()
+            self.warn_ratings_bot_offline()
             return
         stz = GameReportXmppPlugin()
-        stz.addGame(data)
-        stz.addSender(sender)
+        stz.add_game(data)
+        stz.add_sender(sender)
         iq = self.Iq()
         iq['type'] = 'set'
         iq.setPayload(stz)
-        ## Set additional IQ attributes
+        # Set additional IQ attributes
         iq['to'] = to
-        ## Try sending the stanza
+        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
             logging.error("Failed to send game report request")
 
-    def relayBoardList(self, boardList, to = ""):
-        """
-          Send the whole leaderboard list.
-          If no target is passed the boardlist is broadcasted
-            to all clients.
+    def relay_board_list(self, board_list, to=""):
+        """Send the whole leaderboard list.
+
+        If no target is passed the boardlist is broadcasted to all
+        clients.
         """
         iq = self.Iq()
         iq['type'] = 'result'
-        """for i in board:
-          stz.addItem(board[i]['name'], board[i]['rating'])
-        stz.addCommand('boardlist')"""
-        iq.setPayload(boardList)
-        ## Check recipient exists
+        #for i in board:
+        #    stz.addItem(board[i]['name'], board[i]['rating'])
+        #stz.addCommand('boardlist')
+        iq.setPayload(board_list)
+        # Check recipient exists
         if to == "":
             # Rating List
-            for JID in list(self.nicks):
-                ## Set additional IQ attributes
-                iq['to'] = JID
-                ## Try sending the stanza
+            for jid in list(self.nicks):
+                # Set additional IQ attributes
+                iq['to'] = jid
+                # Try sending the stanza
                 try:
                     iq.send(block=False, now=True)
                 except:
@@ -538,20 +513,19 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         else:
             # Leaderboard
             if str(to) not in self.nicks:
-                logging.error("No player with the XmPP ID '%s' known to send boardlist to" % str(to))
+                logging.error("No player with the XmPP ID '%s' known to send boardlist to",
+                              str(to))
                 return
-            ## Set additional IQ attributes
+            # Set additional IQ attributes
             iq['to'] = to
-            ## Try sending the stanza
+            # Try sending the stanza
             try:
                 iq.send(block=False, now=True)
             except:
                 logging.error("Failed to send leaderboard list")
 
-    def relayProfile(self, data, player, to):
-        """
-          Send the player profile to a specified target.
-        """
+    def relay_profile(self, data, player, to):
+        """Send the player profile to a specified target."""
         if to == "":
             logging.error("Failed to send profile, target unspecified")
             return
@@ -559,30 +533,29 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         iq = self.Iq()
         iq['type'] = 'result'
         iq.setPayload(data)
-        ## Check recipient exists
+        # Check recipient exists
         if str(to) not in self.nicks:
-            logging.error("No player with the XmPP ID '%s' known to send profile to" % str(to))
+            logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
             return
 
-        ## Set additional IQ attributes
+        # Set additional IQ attributes
         iq['to'] = to
 
-        ## Try sending the stanza
+        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
             traceback.print_exc()
             logging.error("Failed to send profile")
 
-    def warnRatingsBotOffline(self):
-        """
-          Warns that the ratings bot is offline.
-        """
-        if not self.ratingsBotWarned:
-            logging.warn("Ratings bot '%s' is offline" % str(self.ratingsBot))
-            self.ratingsBotWarned = True
+    def warn_ratings_bot_offline(self):
+        """Warn if the ratings bot is offline."""
+        if not self.ratings_bot_warned:
+            logging.warning("Ratings bot '%s' is offline", str(self.ratings_bot))
+            self.ratings_bot_warned = True
 
-## Main Program ##
+
+# Main Program
 if __name__ == '__main__':
     # Setup the command line arguments.
     optp = OptionParser()
@@ -622,15 +595,18 @@ if __name__ == '__main__':
 
     # Setup logging.
     logging.basicConfig(level=opts.loglevel,
-                        format='%(asctime)s        %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+                        format='%(asctime)s        %(levelname)-8s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
 
     # XpartaMuPP
-    xmpp = XpartaMuPP(opts.xlogin+'@'+opts.xdomain+'/CC', opts.xpassword, opts.xroom+'@conference.'+opts.xdomain, opts.xnickname, opts.xratingsbot+'@'+opts.xdomain+'/CC')
-    xmpp.register_plugin('xep_0030') # Service Discovery
-    xmpp.register_plugin('xep_0004') # Data Forms
-    xmpp.register_plugin('xep_0045') # Multi-User Chat    # used
-    xmpp.register_plugin('xep_0060') # PubSub
-    xmpp.register_plugin('xep_0199') # XMPP Ping
+    xmpp = XpartaMuPP(opts.xlogin + '@' + opts.xdomain + '/CC', opts.xpassword,
+                      opts.xroom + '@conference.' + opts.xdomain, opts.xnickname,
+                      opts.xratingsbot + '@' + opts.xdomain + '/CC')
+    xmpp.register_plugin('xep_0030')  # Service Discovery
+    xmpp.register_plugin('xep_0004')  # Data Forms
+    xmpp.register_plugin('xep_0045')  # Multi-User Chat    # used
+    xmpp.register_plugin('xep_0060')  # PubSub
+    xmpp.register_plugin('xep_0199')  # XMPP Ping
 
     if xmpp.connect():
         xmpp.process(threaded=False)

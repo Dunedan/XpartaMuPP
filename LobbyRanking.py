@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""Copyright (C) 2013 Wildfire Games.
- * This file is part of 0 A.D.
- *
- * 0 A.D. is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * (at your option) any later version.
- *
- * 0 A.D. is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
-"""
+
+# Copyright (C) 2017 Wildfire Games.
+# This file is part of 0 A.D.
+#
+# 0 A.D. is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# 0 A.D. is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, Integer, String, Boolean
@@ -27,7 +26,10 @@ Session = sessionmaker(bind=engine)
 session = Session()
 Base = declarative_base()
 
+
 class Player(Base):
+    """Model representing players."""
+
     __tablename__ = 'players'
 
     id = Column(Integer, primary_key=True)
@@ -40,7 +42,10 @@ class Player(Base):
     games_info = relationship('PlayerInfo', backref='player')
     games_won = relationship('Game', backref='winner')
 
+
 class PlayerInfo(Base):
+    """Model representing game results."""
+
     __tablename__ = 'players_info'
 
     id = Column(Integer, primary_key=True)
@@ -122,7 +127,10 @@ class PlayerInfo(Base):
     tradeIncome = Column(Integer)
     percentMapExplored = Column(Integer)
 
+
 class Game(Base):
+    """Model representing games."""
+
     __tablename__ = 'games'
 
     id = Column(Integer, primary_key=True)

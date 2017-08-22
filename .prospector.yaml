@@ -1,0 +1,46 @@
+---
+strictness: high
+doc-warnings: true
+test-warnings: true
+
+pep8:
+  options:
+    max-line-length: 99
+  disable:
+    - E722
+
+pylint:
+  options:
+    max-args: 6
+    max-line-length: 99
+  disable:
+    - C1001
+    - C0111
+    - C0103
+    - E1121
+    - F0401
+    - R0201
+    - R0902
+    - R0903
+    - R0912
+    - R0913
+    - R0914
+    - R0915
+    - W0232
+    - W0613
+    - W0702
+
+pep257:
+  disable:
+    - D100
+    - D101
+    - D102
+    - D104
+    - D203
+    - D213
+    - D405
+    - D406
+    - D407
+
+mccabe:
+  run: false
