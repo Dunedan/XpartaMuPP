@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+import argparse
 import logging
 import time
 import traceback
-from optparse import OptionParser
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -555,53 +555,36 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             self.ratings_bot_warned = True
 
 
-# Main Program
 if __name__ == '__main__':
-    # Setup the command line arguments.
-    optp = OptionParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     description="XpartaMuPP - XMPP Multiplayer Game Manager")
 
-    # Output verbosity options.
-    optp.add_option('-q', '--quiet', help='set logging to ERROR',
-                    action='store_const', dest='loglevel',
-                    const=logging.ERROR, default=logging.INFO)
-    optp.add_option('-d', '--debug', help='set logging to DEBUG',
-                    action='store_const', dest='loglevel',
-                    const=logging.DEBUG, default=logging.INFO)
-    optp.add_option('-v', '--verbose', help='set logging to COMM',
-                    action='store_const', dest='loglevel',
-                    const=5, default=logging.INFO)
+    log_settings = parser.add_mutually_exclusive_group()
+    log_settings.add_argument('-q', '--quiet', help='only log errors', action='store_const',
+                              dest='loglevel', const=logging.ERROR)
+    log_settings.add_argument('-d', '--debug', help='log debug messages', action='store_const',
+                              dest='loglevel', const=logging.DEBUG)
+    log_settings.add_argument('-v', '--verbose', help='log more informative messages',
+                              action='store_const', dest='loglevel', const=logging.INFO)
+    log_settings.set_defaults(loglevel=logging.WARNING)
 
-    # XpartaMuPP configuration options
-    optp.add_option('-m', '--domain', help='set xpartamupp domain',
-                    action='store', dest='xdomain',
-                    default="lobby.wildfiregames.com")
-    optp.add_option('-l', '--login', help='set xpartamupp login',
-                    action='store', dest='xlogin',
-                    default="xpartamupp")
-    optp.add_option('-p', '--password', help='set xpartamupp password',
-                    action='store', dest='xpassword',
-                    default="XXXXXX")
-    optp.add_option('-n', '--nickname', help='set xpartamupp nickname',
-                    action='store', dest='xnickname',
-                    default="WFGbot")
-    optp.add_option('-r', '--room', help='set muc room to join',
-                    action='store', dest='xroom',
-                    default="arena")
-    optp.add_option('-e', '--elo', help='set rating bot username',
-                    action='store', dest='xratingsbot',
-                    default="disabled")
+    parser.add_argument('-m', '--domain', help='XMPP server to connect to',
+                        default="lobby.wildfiregames.com")
+    parser.add_argument('-l', '--login', help='username for login', default="xpartamupp")
+    parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
+    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="WFGbot")
+    parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
+    parser.add_argument('-e', '--elo', help='username of the rating bot', default="disabled")
 
-    opts, args = optp.parse_args()
+    args = parser.parse_args()
 
-    # Setup logging.
-    logging.basicConfig(level=opts.loglevel,
+    logging.basicConfig(level=args.loglevel,
                         format='%(asctime)s        %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-    # XpartaMuPP
-    xmpp = XpartaMuPP(opts.xlogin + '@' + opts.xdomain + '/CC', opts.xpassword,
-                      opts.xroom + '@conference.' + opts.xdomain, opts.xnickname,
-                      opts.xratingsbot + '@' + opts.xdomain + '/CC')
+    xmpp = XpartaMuPP(args.login + '@' + args.domain + '/CC', args.password,
+                      args.room + '@conference.' + args.domain, args.nickname,
+                      args.ratingsbot + '@' + args.domain + '/CC')
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
     xmpp.register_plugin('xep_0045')  # Multi-User Chat    # used

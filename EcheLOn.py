@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+import argparse
 import logging
 import traceback
-from optparse import OptionParser
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -720,49 +720,34 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.error("Failed to send profile")
 
 
-# Main Program
 if __name__ == '__main__':
-    # Setup the command line arguments.
-    optp = OptionParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     description="EcheLOn - XMPP Rating Bot")
 
-    # Output verbosity options.
-    optp.add_option('-q', '--quiet', help='set logging to ERROR',
-                    action='store_const', dest='loglevel',
-                    const=logging.ERROR, default=logging.INFO)
-    optp.add_option('-d', '--debug', help='set logging to DEBUG',
-                    action='store_const', dest='loglevel',
-                    const=logging.DEBUG, default=logging.INFO)
-    optp.add_option('-v', '--verbose', help='set logging to COMM',
-                    action='store_const', dest='loglevel',
-                    const=5, default=logging.INFO)
+    log_settings = parser.add_mutually_exclusive_group()
+    log_settings.add_argument('-q', '--quiet', help='only log errors', action='store_const',
+                              dest='log_level', const=logging.ERROR)
+    log_settings.add_argument('-d', '--debug', help='log debug messages', action='store_const',
+                              dest='log_level', const=logging.DEBUG)
+    log_settings.add_argument('-v', '--verbose', help='log more informative messages',
+                              action='store_const', dest='log_level', const=logging.INFO)
+    log_settings.set_defaults(log_level=logging.WARNING)
 
-    # EcheLOn configuration options
-    optp.add_option('-m', '--domain', help='set EcheLOn domain',
-                    action='store', dest='xdomain',
-                    default="lobby.wildfiregames.com")
-    optp.add_option('-l', '--login', help='set EcheLOn login',
-                    action='store', dest='xlogin',
-                    default="EcheLOn")
-    optp.add_option('-p', '--password', help='set EcheLOn password',
-                    action='store', dest='xpassword',
-                    default="XXXXXX")
-    optp.add_option('-n', '--nickname', help='set EcheLOn nickname',
-                    action='store', dest='xnickname',
-                    default="Ratings")
-    optp.add_option('-r', '--room', help='set muc room to join',
-                    action='store', dest='xroom',
-                    default="arena")
+    parser.add_argument('-m', '--domain', help='XMPP server to connect to',
+                        default="lobby.wildfiregames.com")
+    parser.add_argument('-l', '--login', help='username for login', default="EcheLOn")
+    parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
+    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="Ratings")
+    parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
 
-    opts, args = optp.parse_args()
+    args = parser.parse_args()
 
-    # Setup logging.
-    logging.basicConfig(level=opts.loglevel,
+    logging.basicConfig(level=args.log_level,
                         format='%(asctime)s        %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-    # EcheLOn
-    xmpp = EcheLOn(opts.xlogin + '@' + opts.xdomain + '/CC', opts.xpassword,
-                   opts.xroom + '@conference.' + opts.xdomain, opts.xnickname)
+    xmpp = EcheLOn(args.login + '@' + args.domain + '/CC', args.password,
+                   args.room + '@conference.' + args.domain, args.nickname)
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
     xmpp.register_plugin('xep_0045')  # Multi-User Chat    # used
