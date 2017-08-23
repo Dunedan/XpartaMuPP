@@ -30,6 +30,8 @@ from sqlalchemy import func
 from ELO import get_rating_adjustment
 from LobbyRanking import session as db, Game, Player, PlayerInfo
 
+from stanzas import BoardListXmppPlugin, GameReportXmppPlugin, ProfileXmppPlugin
+
 # Rating that new players should be inserted into the
 # database with, before they've played any games.
 leaderboard_default_rating = 1200
@@ -408,69 +410,6 @@ class PlayerXmppPlugin(ElementBase):
         self.xml.append(ET.fromstring("<player>%s</player>" % player))
 
 
-class BoardListXmppPlugin(ElementBase):
-    """Class for custom boardlist and ratinglist stanza extension."""
-
-    name = 'query'
-    namespace = 'jabber:iq:boardlist'
-    interfaces = set(('board', 'command', 'recipient'))
-    sub_interfaces = interfaces
-    plugin_attrib = 'boardlist'
-
-    def add_command(self, command):
-        self.xml.append(ET.fromstring("<command>%s</command>" % command))
-
-    def add_recipient(self, recipient):
-        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
-
-    def add_item(self, name, rating):
-        self.xml.append(ET.Element("board", {"name": name, "rating": rating}))
-
-
-class GameReportXmppPlugin(ElementBase):
-    """Class for custom gamereport stanza extension."""
-
-    name = 'report'
-    namespace = 'jabber:iq:gamereport'
-    plugin_attrib = 'gamereport'
-    interfaces = ('game', 'sender')
-    sub_interfaces = interfaces
-
-    def add_sender(self, sender):
-        self.xml.append(ET.fromstring("<sender>%s</sender>" % sender))
-
-    def get_game(self):
-        """Required to parse incoming stanzas with this extension."""
-        game = self.xml.find('{%s}game' % self.namespace)
-        data = {}
-        for key, item in game.items():
-            data[key] = item
-        return data
-
-
-class ProfileXmppPlugin(ElementBase):
-    """Class for custom profile."""
-
-    name = 'query'
-    namespace = 'jabber:iq:profile'
-    interfaces = set(('profile', 'command', 'recipient'))
-    sub_interfaces = interfaces
-    plugin_attrib = 'profile'
-
-    def add_command(self, command):
-        self.xml.append(ET.fromstring("<command>%s</command>" % command))
-
-    def add_recipient(self, recipient):
-        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
-
-    def add_item(self, player, rating, highest_rating, rank, total_games_played, wins, losses):
-        item_xml = ET.Element("profile", {"player": player, "rating": rating,
-                                          "highestRating": highest_rating, "rank": rank,
-                                          "totalGamesPlayed": total_games_played, "wins": wins,
-                                          "losses": losses})
-        self.xml.append(item_xml)
-
-
 class EcheLOn(sleekxmpp.ClientXMPP):
     """Main class which handles IQ data and sends new data."""
 
@@ -610,14 +549,14 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """
         # Pull leaderboard data and add it to the stanza
         board = self.leaderboard.get_board()
-        stz = BoardListXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'result'
+        stanza = BoardListXmppPlugin()
         for i in board:
-            stz.add_item(board[i]['name'], board[i]['rating'])
-        stz.add_command('boardlist')
-        stz.add_recipient(recipient)
-        iq.setPayload(stz)
+            stanza.add_item(board[i]['name'], board[i]['rating'])
+        stanza.add_command('boardlist')
+        stanza.add_recipient(recipient)
+        iq.setPayload(stanza)
         # Check recipient exists
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send boardlist to", str(to))
@@ -634,13 +573,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Send the rating list."""
         # Pull rating list data and add it to the stanza
         ratinglist = self.leaderboard.get_rating_list(self.nicks)
-        stz = BoardListXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'result'
+        stanza = BoardListXmppPlugin()
         for i in ratinglist:
-            stz.add_item(ratinglist[i]['name'], ratinglist[i]['rating'])
-        stz.add_command('ratinglist')
-        iq.setPayload(stz)
+            stanza.add_item(ratinglist[i]['name'], ratinglist[i]['rating'])
+        stanza.add_command('ratinglist')
+        iq.setPayload(stanza)
         # Check recipient exists
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send ratinglist to", str(to))
@@ -669,15 +608,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         if not online:
             stats = self.leaderboard.get_profile(player + "@" + str(recipient).split('@')[1])
-        stz = ProfileXmppPlugin()
+
         iq = self.Iq()
         iq['type'] = 'result'
-
-        stz.add_item(player, stats['rating'], stats['highestRating'], stats['rank'],
-                     stats['totalGamesPlayed'], stats['wins'], stats['losses'])
-        stz.add_command(player)
-        stz.add_recipient(recipient)
-        iq.setPayload(stz)
+        stanza = ProfileXmppPlugin()
+        stanza.add_item(player, stats['rating'], stats['highestRating'], stats['rank'],
+                        stats['totalGamesPlayed'], stats['wins'], stats['losses'])
+        stanza.add_command(player)
+        stanza.add_recipient(recipient)
+        iq.setPayload(stanza)
         # Check recipient exists
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
@@ -695,15 +634,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def send_profile_not_found(self, to, player, recipient):
         """Send a profile not-found error to a specified target."""
-        stz = ProfileXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'result'
 
         filler = str(0)
-        stz.add_item(player, str(-2), filler, filler, filler, filler, filler)
-        stz.add_command(player)
-        stz.add_recipient(recipient)
-        iq.setPayload(stz)
+        stanza = ProfileXmppPlugin()
+        stanza.add_item(player, str(-2), filler, filler, filler, filler, filler)
+        stanza.add_command(player)
+        stanza.add_recipient(recipient)
+        iq.setPayload(stanza)
         # Check recipient exists
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))

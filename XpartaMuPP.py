@@ -27,6 +27,9 @@ from sleekxmpp.xmlstream import ElementBase, register_stanza_plugin, ET
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 
+from stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlugin,
+                     ProfileXmppPlugin)
+
 
 class GameList():
     """Class to tracks all games in the lobby."""
@@ -78,93 +81,6 @@ class PlayerXmppPlugin(ElementBase):
 
     def add_player_online(self, player):
         self.xml.append(ET.fromstring("<online>%s</online>" % player))
-
-
-class BoardListXmppPlugin(ElementBase):
-    """Class for custom boardlist and ratinglist stanza extension."""
-
-    name = 'query'
-    namespace = 'jabber:iq:boardlist'
-    interfaces = set(('board', 'command', 'recipient'))
-    sub_interfaces = interfaces
-    plugin_attrib = 'boardlist'
-
-    def add_command(self, command):
-        self.xml.append(ET.fromstring("<command>%s</command>" % command))
-
-    def add_recipient(self, recipient):
-        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
-
-    def add_item(self, name, rating):
-        self.xml.append(ET.Element("board", {"name": name, "rating": rating}))
-
-
-class GameReportXmppPlugin(ElementBase):
-    """Class for custom gamereport stanza extension."""
-
-    name = 'report'
-    namespace = 'jabber:iq:gamereport'
-    plugin_attrib = 'gamereport'
-    interfaces = ('game', 'sender')
-    sub_interfaces = interfaces
-
-    def add_sender(self, sender):
-        self.xml.append(ET.fromstring("<sender>%s</sender>" % sender))
-
-    def add_game(self, gr):
-        self.xml.append(ET.fromstring(str(gr)).find('{%s}game' % self.namespace))
-
-    def get_game(self):
-        """Required to parse incoming stanzas with this extension."""
-        game = self.xml.find('{%s}game' % self.namespace)
-        data = {}
-        for key, item in game.items():
-            data[key] = item
-        return data
-
-
-class ProfileXmppPlugin(ElementBase):
-    """Class for custom profile."""
-
-    name = 'query'
-    namespace = 'jabber:iq:profile'
-    interfaces = set(('profile', 'command', 'recipient'))
-    sub_interfaces = interfaces
-    plugin_attrib = 'profile'
-
-    def add_command(self, command):
-        self.xml.append(ET.fromstring("<command>%s</command>" % command))
-
-    def add_recipient(self, recipient):
-        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
-
-    def add_item(self, player, rating, highest_rating, rank, total_games_played, wins, losses):
-        item_xml = ET.Element("profile", {"player": player, "rating": rating,
-                                          "highestRating": highest_rating, "rank": rank,
-                                          "totalGamesPlayed": total_games_played, "wins": wins,
-                                          "losses": losses})
-        self.xml.append(item_xml)
-
-
-class GameListXmppPlugin(ElementBase):
-    """Class for custom gamelist stanza extension."""
-
-    name = 'query'
-    namespace = 'jabber:iq:gamelist'
-    interfaces = set(('game', 'command'))
-    sub_interfaces = interfaces
-    plugin_attrib = 'gamelist'
-
-    def add_game(self, data):
-        self.xml.append(ET.Element("game", data))
-
-    def get_game(self):
-        """Required to parse incoming stanzas with this extension."""
-        game = self.xml.find('{%s}game' % self.namespace)
-        data = {}
-        for key, item in game.items():
-            data[key] = item
-        return data
 
 
 class XpartaMuPP(sleekxmpp.ClientXMPP):
@@ -346,18 +262,17 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         games = self.game_list.get_all_games()
         if to == "":
             for jid in list(self.nicks):
-                stz = GameListXmppPlugin()
 
+                stanza = GameListXmppPlugin()
                 # Pull games and add each to the stanza
                 for jids in games:
-                    g = games[jids]
-                    stz.add_game(g)
+                    stanza.add_game(games[jids])
 
                 # Set additional IQ attributes
                 iq = self.Iq()
                 iq['type'] = 'result'
                 iq['to'] = jid
-                iq.setPayload(stz)
+                iq.setPayload(stanza)
 
                 # Try sending the stanza
                 try:
@@ -370,18 +285,17 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 logging.error("No player with the XmPP ID '%s' known to send gamelist to.",
                               str(to))
                 return
-            stz = GameListXmppPlugin()
 
+            stanza = GameListXmppPlugin()
             # Pull games and add each to the stanza
             for jids in games:
-                g = games[jids]
-                stz.add_game(g)
+                stanza.add_game(games[jids])
 
             # Set additional IQ attributes
             iq = self.Iq()
             iq['type'] = 'result'
             iq['to'] = to
-            iq.setPayload(stz)
+            iq.setPayload(stanza)
 
             # Try sending the stanza
             try:
@@ -395,12 +309,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
-        stz = BoardListXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'get'
-        stz.add_command('getleaderboard')
-        stz.add_recipient(recipient)
-        iq.setPayload(stz)
+        stanza = BoardListXmppPlugin()
+        stanza.add_command('getleaderboard')
+        stanza.add_recipient(recipient)
+        iq.setPayload(stanza)
         # Set additional IQ attributes
         iq['to'] = to
         # Try sending the stanza
@@ -415,11 +329,11 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
-        stz = BoardListXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'get'
-        stz.add_command('getratinglist')
-        iq.setPayload(stz)
+        stanza = BoardListXmppPlugin()
+        stanza.add_command('getratinglist')
+        iq.setPayload(stanza)
         ## Set additional IQ attributes
         iq['to'] = to
         ## Try sending the stanza
@@ -434,12 +348,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
-        stz = ProfileXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'get'
-        stz.add_command(player)
-        stz.add_recipient(recipient)
-        iq.setPayload(stz)
+        stanza = ProfileXmppPlugin()
+        stanza.add_command(player)
+        stanza.add_recipient(recipient)
+        iq.setPayload(stanza)
         # Set additional IQ attributes
         iq['to'] = to
         # Try sending the stanza
@@ -454,11 +368,11 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         to = self.ratings_bot
         if to not in self.nicks:
             return
-        stz = PlayerXmppPlugin()
         iq = self.Iq()
         iq['type'] = 'set'
-        stz.add_player_online(jid)
-        iq.setPayload(stz)
+        stanza = PlayerXmppPlugin()
+        stanza.add_player_online(jid)
+        iq.setPayload(stanza)
         # Set additional IQ attributes
         iq['to'] = to
         # Try sending the stanza
@@ -473,12 +387,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
-        stz = GameReportXmppPlugin()
-        stz.add_game(data)
-        stz.add_sender(sender)
+        stanza = GameReportXmppPlugin()
+        stanza.add_game(data)
+        stanza.add_sender(sender)
         iq = self.Iq()
         iq['type'] = 'set'
-        iq.setPayload(stz)
+        iq.setPayload(stanza)
         # Set additional IQ attributes
         iq['to'] = to
         # Try sending the stanza
@@ -496,8 +410,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         iq = self.Iq()
         iq['type'] = 'result'
         #for i in board:
-        #    stz.addItem(board[i]['name'], board[i]['rating'])
-        #stz.addCommand('boardlist')
+        #    stanza.addItem(board[i]['name'], board[i]['rating'])
+        #stanza.addCommand('boardlist')
         iq.setPayload(board_list)
         # Check recipient exists
         if to == "":

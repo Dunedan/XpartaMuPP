@@ -135,7 +135,7 @@ If everything is fine you should see something along these lines in your console
 Congratulations, you are running XpartaMuPP - the 0ad Multiplayer Game Manager.
 
 Run EcheLOn - XMPP Rating Bot
-==========
+=============================
 
 This bot can be thought of as a module of XpartaMuPP in that IQs stanzas sent to XpartaMuPP are
 forwarded onto EcheLOn if its corresponding EcheLOn is online and ignored otherwise. This is by no
