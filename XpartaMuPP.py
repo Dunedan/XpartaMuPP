@@ -100,8 +100,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         # Store mapping of nicks and XmppIDs, attached via presence stanza
         self.nicks = {}
 
-        self.lastLeft = ""
-
         register_stanza_plugin(Iq, PlayerXmppPlugin)
         register_stanza_plugin(Iq, GameListXmppPlugin)
         register_stanza_plugin(Iq, BoardListXmppPlugin)
@@ -125,42 +123,46 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.add_event_handler("groupchat_message", self.muc_message)
 
     def start(self, event):
-        """Process the session_start event."""
+        """Join MUC channel and announce presence."""
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
         self.send_presence()
         self.get_roster()
         logging.info("XpartaMuPP started")
 
     def muc_online(self, presence):
-        """Process presence stanza from a chat room."""
+        """Add joining players to the list of players."""
+        nick = str(presence['muc']['nick'])
+        jid = str(presence['muc']['jid'])
+
         if self.ratings_bot in self.nicks:
             self.relay_rating_list_request(self.ratings_bot)
-        self.relay_player_online(presence['muc']['jid'])
-        if presence['muc']['nick'] != self.nick:
-            # If it doesn't already exist, store player JID mapped to their nick.
-            if str(presence['muc']['jid']) not in self.nicks:
-                self.nicks[str(presence['muc']['jid'])] = presence['muc']['nick']
-            # Check the jid isn't already in the lobby.
-            # Send Gamelist to new player.
-            self.send_game_list(presence['muc']['jid'])
-            logging.debug("Client '%s' connected with a nick of '%s'.", presence['muc']['jid'],
-                          presence['muc']['nick'])
+
+        self.relay_player_online(jid)
+        if nick != self.nick:
+            if jid not in self.nicks:
+                self.nicks[jid] = nick
+
+            # Send game list to new player.
+            self.send_game_list(jid)
+            logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
     def muc_offline(self, presence):
-        """Process presence stanza from a chat room."""
-        # Clean up after a player leaves
-        if presence['muc']['nick'] != self.nick:
+        """Remove leaving players from the list of players."""
+        nick = str(presence['muc']['nick'])
+        jid = str(presence['muc']['jid'])
+
+        if nick != self.nick:
             # Delete any games they were hosting.
-            for jid in self.game_list.get_all_games():
-                if jid == str(presence['muc']['jid']):
-                    self.game_list.remove_game(jid)
+            for game_jid in self.game_list.get_all_games():
+                if game_jid == jid:
+                    self.game_list.remove_game(game_jid)
                     self.send_game_list()
                     break
-            # Remove them from the local player list.
-            self.lastLeft = str(presence['muc']['jid'])
-            if str(presence['muc']['jid']) in self.nicks:
-                del self.nicks[str(presence['muc']['jid'])]
-        if presence['muc']['nick'] == self.ratings_bot:
+
+            if jid in self.nicks:
+                del self.nicks[jid]
+
+        if nick == self.ratings_bot:
             self.ratings_bot_warned = False
 
     def muc_message(self, msg):
@@ -253,55 +255,45 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             logging.error("Failed to process stanza type '%s' received from %s", iq['type'],
                           iq['from'].bare)
 
-    def send_game_list(self, to=""):
+    def send_game_list(self, to=None):
         """Send a massive stanza with the whole game list.
 
         If no target is passed the gamelist is broadcasted to all
         clients.
         """
         games = self.game_list.get_all_games()
-        if to == "":
+        if not to:
             for jid in list(self.nicks):
-
+                iq = self.make_iq_result(ito=jid)
                 stanza = GameListXmppPlugin()
                 # Pull games and add each to the stanza
                 for jids in games:
                     stanza.add_game(games[jids])
+                iq.set_payload(stanza)
 
-                # Set additional IQ attributes
-                iq = self.Iq()
-                iq['type'] = 'result'
-                iq['to'] = jid
-                iq.setPayload(stanza)
-
-                # Try sending the stanza
                 try:
                     iq.send(block=False, now=True)
                 except:
                     logging.error("Failed to send game list")
-        else:
-            # Check recipient exists
-            if str(to) not in self.nicks:
-                logging.error("No player with the XmPP ID '%s' known to send gamelist to.",
-                              str(to))
+
                 return
 
-            stanza = GameListXmppPlugin()
-            # Pull games and add each to the stanza
-            for jids in games:
-                stanza.add_game(games[jids])
+        if str(to) not in self.nicks:
+            logging.error("No player with the XmPP ID '%s' known to send gamelist to.",
+                          str(to))
+            return
 
-            # Set additional IQ attributes
-            iq = self.Iq()
-            iq['type'] = 'result'
-            iq['to'] = to
-            iq.setPayload(stanza)
+        iq = self.make_iq_result(ito=to)
+        stanza = GameListXmppPlugin()
+        # Pull games and add each to the stanza
+        for jids in games:
+            stanza.add_game(games[jids])
+        iq.set_payload(stanza)
 
-            # Try sending the stanza
-            try:
-                iq.send(block=False, now=True)
-            except:
-                logging.error("Failed to send game list")
+        try:
+            iq.send(block=False, now=True)
+        except:
+            logging.error("Failed to send game list")
 
     def relay_board_list_request(self, recipient):
         """Send a boardListRequest to EcheLOn."""
@@ -309,15 +301,13 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
-        iq = self.Iq()
-        iq['type'] = 'get'
+
+        iq = self.make_iq_get(ito=to)
         stanza = BoardListXmppPlugin()
         stanza.add_command('getleaderboard')
         stanza.add_recipient(recipient)
-        iq.setPayload(stanza)
-        # Set additional IQ attributes
-        iq['to'] = to
-        # Try sending the stanza
+        iq.set_payload(stanza)
+
         try:
             iq.send(block=False, now=True)
         except:
@@ -329,14 +319,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
-        iq = self.Iq()
-        iq['type'] = 'get'
+
+        iq = self.make_iq_get(ito=to)
         stanza = BoardListXmppPlugin()
         stanza.add_command('getratinglist')
-        iq.setPayload(stanza)
-        ## Set additional IQ attributes
-        iq['to'] = to
-        ## Try sending the stanza
+        iq.set_payload(stanza)
+
         try:
             iq.send(block=False, now=True)
         except:
@@ -348,15 +336,13 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
-        iq = self.Iq()
-        iq['type'] = 'get'
+
+        iq = self.make_iq_get(ito=to)
         stanza = ProfileXmppPlugin()
         stanza.add_command(player)
         stanza.add_recipient(recipient)
-        iq.setPayload(stanza)
-        # Set additional IQ attributes
-        iq['to'] = to
-        # Try sending the stanza
+        iq.set_payload(stanza)
+
         try:
             iq.send(block=False, now=True)
         except:
@@ -364,18 +350,15 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def relay_player_online(self, jid):
         """Tells EcheLOn that someone comes online."""
-        # Check recipient exists
         to = self.ratings_bot
         if to not in self.nicks:
             return
-        iq = self.Iq()
-        iq['type'] = 'set'
+
+        iq = self.make_iq_set(ito=to)
         stanza = PlayerXmppPlugin()
         stanza.add_player_online(jid)
-        iq.setPayload(stanza)
-        # Set additional IQ attributes
-        iq['to'] = to
-        # Try sending the stanza
+        iq.set_payload(stanza)
+
         try:
             iq.send(block=False, now=True)
         except:
@@ -387,39 +370,34 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if to not in self.nicks:
             self.warn_ratings_bot_offline()
             return
+
+        iq = self.make_iq_set(ito=to)
         stanza = GameReportXmppPlugin()
         stanza.add_game(data)
         stanza.add_sender(sender)
-        iq = self.Iq()
-        iq['type'] = 'set'
-        iq.setPayload(stanza)
-        # Set additional IQ attributes
-        iq['to'] = to
-        # Try sending the stanza
+        iq.set_payload(stanza)
+
         try:
             iq.send(block=False, now=True)
         except:
             logging.error("Failed to send game report request")
 
-    def relay_board_list(self, board_list, to=""):
+    def relay_board_list(self, board_list, to=None):
         """Send the whole leaderboard list.
 
         If no target is passed the boardlist is broadcasted to all
         clients.
         """
-        iq = self.Iq()
-        iq['type'] = 'result'
+        iq = self.make_iq_result(ito=to)
         #for i in board:
         #    stanza.addItem(board[i]['name'], board[i]['rating'])
         #stanza.addCommand('boardlist')
-        iq.setPayload(board_list)
-        # Check recipient exists
-        if to == "":
+        iq.set_payload(board_list)
+
+        if not to:
             # Rating List
             for jid in list(self.nicks):
-                # Set additional IQ attributes
                 iq['to'] = jid
-                # Try sending the stanza
                 try:
                     iq.send(block=False, now=True)
                 except:
@@ -430,9 +408,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 logging.error("No player with the XmPP ID '%s' known to send boardlist to",
                               str(to))
                 return
-            # Set additional IQ attributes
-            iq['to'] = to
-            # Try sending the stanza
             try:
                 iq.send(block=False, now=True)
             except:
@@ -440,22 +415,17 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def relay_profile(self, data, player, to):
         """Send the player profile to a specified target."""
-        if to == "":
+        if not to:
             logging.error("Failed to send profile, target unspecified")
             return
 
-        iq = self.Iq()
-        iq['type'] = 'result'
-        iq.setPayload(data)
-        # Check recipient exists
+        iq = self.make_iq_result(ito=to)
+        iq.set_payload(data)
+
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
             return
 
-        # Set additional IQ attributes
-        iq['to'] = to
-
-        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
@@ -498,7 +468,7 @@ if __name__ == '__main__':
 
     xmpp = XpartaMuPP(args.login + '@' + args.domain + '/CC', args.password,
                       args.room + '@conference.' + args.domain, args.nickname,
-                      args.ratingsbot + '@' + args.domain + '/CC')
+                      args.elo + '@' + args.domain + '/CC')
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
     xmpp.register_plugin('xep_0045')  # Multi-User Chat    # used

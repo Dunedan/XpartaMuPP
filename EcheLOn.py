@@ -428,8 +428,6 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         # Store mapping of nicks and XmppIDs, attached via presence stanza
         self.nicks = {}
 
-        self.lastLeft = ""
-
         register_stanza_plugin(Iq, PlayerXmppPlugin)
         register_stanza_plugin(Iq, BoardListXmppPlugin)
         register_stanza_plugin(Iq, GameReportXmppPlugin)
@@ -449,30 +447,30 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.add_event_handler("muc::%s::got_offline" % self.room, self.muc_offline)
 
     def start(self, event):
-        """Process the session_start event."""
+        """Join MUC channel and announce presence."""
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
         self.send_presence()
         self.get_roster()
         logging.info("EcheLOn started")
 
     def muc_online(self, presence):
-        """Process presence stanza from a chat room."""
-        if presence['muc']['nick'] != self.nick:
-            # If it doesn't already exist, store player JID mapped to their nick.
-            if str(presence['muc']['jid']) not in self.nicks:
-                self.nicks[str(presence['muc']['jid'])] = presence['muc']['nick']
-            # Check the jid isn't already in the lobby.
-            logging.debug("Client '%s' connected with a nick of '%s'.",
-                          presence['muc']['jid'], presence['muc']['nick'])
+        """Add joining players to the list of players."""
+        nick = str(presence['muc']['nick'])
+        jid = str(presence['muc']['jid'])
+
+        if nick != self.nick:
+            if jid not in self.nicks:
+                self.nicks[jid] = nick
+            logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
     def muc_offline(self, presence):
-        """Process presence stanza from a chat room."""
-        # Clean up after a player leaves
-        if presence['muc']['nick'] != self.nick:
-            # Remove them from the local player list.
-            self.lastLeft = str(presence['muc']['jid'])
-            if str(presence['muc']['jid']) in self.nicks:
-                del self.nicks[str(presence['muc']['jid'])]
+        """Remove leaving players from the list of players."""
+        nick = str(presence['muc']['nick'])
+        jid = str(presence['muc']['jid'])
+
+        if nick != self.nick:
+            if jid in self.nicks:
+                del self.nicks[jid]
 
     def iqhandler(self, iq):
         """Handle the custom stanzas.
@@ -549,21 +547,19 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """
         # Pull leaderboard data and add it to the stanza
         board = self.leaderboard.get_board()
-        iq = self.Iq()
-        iq['type'] = 'result'
+
+        iq = self.make_iq_result(ito=to)
         stanza = BoardListXmppPlugin()
         for i in board:
             stanza.add_item(board[i]['name'], board[i]['rating'])
         stanza.add_command('boardlist')
         stanza.add_recipient(recipient)
-        iq.setPayload(stanza)
-        # Check recipient exists
+        iq.set_payload(stanza)
+
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send boardlist to", str(to))
             return
-        # Set additional IQ attributes
-        iq['to'] = to
-        # Try sending the stanza
+
         try:
             iq.send(block=False, now=True)
         except:
@@ -573,20 +569,18 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Send the rating list."""
         # Pull rating list data and add it to the stanza
         ratinglist = self.leaderboard.get_rating_list(self.nicks)
-        iq = self.Iq()
-        iq['type'] = 'result'
+
+        iq = self.make_iq_result(ito=to)
         stanza = BoardListXmppPlugin()
         for i in ratinglist:
             stanza.add_item(ratinglist[i]['name'], ratinglist[i]['rating'])
         stanza.add_command('ratinglist')
-        iq.setPayload(stanza)
-        # Check recipient exists
+        iq.set_payload(stanza)
+
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send ratinglist to", str(to))
             return
-        # Set additional IQ attributes
-        iq['to'] = to
-        # Try sending the stanza
+
         try:
             iq.send(block=False, now=True)
         except:
@@ -594,7 +588,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def send_profile(self, to, player, recipient):
         """Send the player profile to a specified target."""
-        if to == "":
+        if not to:
             logging.error("Failed to send profile")
             return
 
@@ -609,23 +603,18 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if not online:
             stats = self.leaderboard.get_profile(player + "@" + str(recipient).split('@')[1])
 
-        iq = self.Iq()
-        iq['type'] = 'result'
+        iq = self.make_iq_result(ito=to)
         stanza = ProfileXmppPlugin()
         stanza.add_item(player, stats['rating'], stats['highestRating'], stats['rank'],
                         stats['totalGamesPlayed'], stats['wins'], stats['losses'])
         stanza.add_command(player)
         stanza.add_recipient(recipient)
-        iq.setPayload(stanza)
-        # Check recipient exists
+        iq.set_payload(stanza)
+
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
             return
 
-        # Set additional IQ attributes
-        iq['to'] = to
-
-        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
@@ -634,24 +623,18 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def send_profile_not_found(self, to, player, recipient):
         """Send a profile not-found error to a specified target."""
-        iq = self.Iq()
-        iq['type'] = 'result'
-
+        iq = self.make_iq_result(ito=to)
         filler = str(0)
         stanza = ProfileXmppPlugin()
         stanza.add_item(player, str(-2), filler, filler, filler, filler, filler)
         stanza.add_command(player)
         stanza.add_recipient(recipient)
-        iq.setPayload(stanza)
-        # Check recipient exists
+        iq.set_payload(stanza)
+
         if str(to) not in self.nicks:
             logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
             return
 
-        # Set additional IQ attributes
-        iq['to'] = to
-
-        # Try sending the stanza
         try:
             iq.send(block=False, now=True)
         except:
