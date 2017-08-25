@@ -186,7 +186,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             #  can send lists/register automatically on joining the room.
             if 'boardlist' in iq.plugins:
                 try:
-                    self.relay_board_list_request(iq['from'])
+                    self.relay_board_list_request(self.ratings_bot, iq['from'])
                 except:
                     traceback.print_exc()
                     logging.error("Failed to process leaderboardlist request from %s",
@@ -194,7 +194,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             elif 'profile' in iq.plugins:
                 command = iq['profile']['command']
                 try:
-                    self.relay_profile_request(iq['from'], command)
+                    self.relay_profile_request(self.ratings_bot, iq['from'], command)
                 except:
                     pass
             else:
@@ -293,17 +293,16 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except:
             logging.error("Failed to send game list")
 
-    def relay_board_list_request(self, recipient):
+    def relay_board_list_request(self, recipient, player):
         """Send a boardListRequest to EcheLOn."""
-        to = self.ratings_bot
-        if to not in self.nicks:
+        if recipient not in self.nicks:
             self.warn_ratings_bot_offline()
             return
 
-        iq = self.make_iq_get(ito=to)
+        iq = self.make_iq_get(ito=recipient)
         stanza = BoardListXmppPlugin()
         stanza.add_command('getleaderboard')
-        stanza.add_recipient(recipient)
+        stanza.add_recipient(player)
         iq.set_payload(stanza)
 
         try:
@@ -313,12 +312,11 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def relay_rating_list_request(self, recipient):
         """Send a ratingListRequest to EcheLOn."""
-        to = self.ratings_bot
-        if to not in self.nicks:
+        if recipient not in self.nicks:
             self.warn_ratings_bot_offline()
             return
 
-        iq = self.make_iq_get(ito=to)
+        iq = self.make_iq_get(ito=recipient)
         stanza = BoardListXmppPlugin()
         stanza.add_command('getratinglist')
         iq.set_payload(stanza)
@@ -328,17 +326,16 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except:
             logging.error("Failed to send rating list request")
 
-    def relay_profile_request(self, recipient, player):
+    def relay_profile_request(self, recipient, player, command):
         """Send a profileRequest to EcheLOn."""
-        to = self.ratings_bot
-        if to not in self.nicks:
+        if recipient not in self.nicks:
             self.warn_ratings_bot_offline()
             return
 
-        iq = self.make_iq_get(ito=to)
+        iq = self.make_iq_get(ito=recipient)
         stanza = ProfileXmppPlugin()
-        stanza.add_command(player)
-        stanza.add_recipient(recipient)
+        stanza.add_command(command)
+        stanza.add_recipient(player)
         iq.set_payload(stanza)
 
         try:
