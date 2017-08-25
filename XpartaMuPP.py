@@ -31,43 +31,43 @@ from stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlug
                      ProfileXmppPlugin)
 
 
-class GameList(object):
+class Games(object):
     """Class to tracks all games in the lobby."""
 
     def __init__(self):
-        self.game_list = {}
+        self.games = {}
 
     def add_game(self, jid, data):
         """Add a game."""
         data['players-init'] = data['players']
         data['nbp-init'] = data['nbp']
         data['state'] = 'init'
-        self.game_list[str(jid)] = data
+        self.games[str(jid)] = data
 
     def remove_game(self, jid):
         """Remove a game attached to a JID."""
-        del self.game_list[str(jid)]
+        del self.games[str(jid)]
 
     def get_all_games(self):
         """Return all games."""
-        return self.game_list
+        return self.games
 
     def change_game_state(self, jid, data):
         """Switch game state between running and waiting."""
         jid = str(jid)
-        if jid in self.game_list:
-            if self.game_list[jid]['nbp-init'] > data['nbp']:
+        if jid in self.games:
+            if self.games[jid]['nbp-init'] > data['nbp']:
                 logging.debug("change game (%s) state from %s to %s", jid,
-                              self.game_list[jid]['state'], 'waiting')
-                self.game_list[jid]['state'] = 'waiting'
+                              self.games[jid]['state'], 'waiting')
+                self.games[jid]['state'] = 'waiting'
             else:
                 logging.debug("change game (%s) state from %s to %s", jid,
-                              self.game_list[jid]['state'], 'running')
-                self.game_list[jid]['state'] = 'running'
-            self.game_list[jid]['nbp'] = data['nbp']
-            self.game_list[jid]['players'] = data['players']
-            if 'startTime' not in self.game_list[jid]:
-                self.game_list[jid]['startTime'] = str(round(time.time()))
+                              self.games[jid]['state'], 'running')
+                self.games[jid]['state'] = 'running'
+            self.games[jid]['nbp'] = data['nbp']
+            self.games[jid]['players'] = data['players']
+            if 'startTime' not in self.games[jid]:
+                self.games[jid]['startTime'] = str(round(time.time()))
 
 
 class PlayerXmppPlugin(ElementBase):
@@ -94,8 +94,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.ratings_bot_warned = False
 
         self.ratings_bot = ratingsbot
-        # Game collection
-        self.game_list = GameList()
+        self.games = Games()
 
         # Store mapping of nicks and XmppIDs, attached via presence stanza
         self.nicks = {}
@@ -153,9 +152,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         if nick != self.nick:
             # Delete any games they were hosting.
-            for game_jid in self.game_list.get_all_games():
+            for game_jid in self.games.get_all_games():
                 if game_jid == jid:
-                    self.game_list.remove_game(game_jid)
+                    self.games.remove_game(game_jid)
                     self.send_game_list()
                     break
 
@@ -218,7 +217,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 if command == 'register':
                     # Add game
                     try:
-                        self.game_list.add_game(iq['from'], iq['gamelist']['game'])
+                        self.games.add_game(iq['from'], iq['gamelist']['game'])
                         self.send_game_list()
                     except:
                         traceback.print_exc()
@@ -226,7 +225,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 elif command == 'unregister':
                     # Remove game
                     try:
-                        self.game_list.remove_game(iq['from'])
+                        self.games.remove_game(iq['from'])
                         self.send_game_list()
                     except:
                         traceback.print_exc()
@@ -235,7 +234,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 elif command == 'changestate':
                     # Change game status (waiting/running)
                     try:
-                        self.game_list.change_game_state(iq['from'], iq['gamelist']['game'])
+                        self.games.change_game_state(iq['from'], iq['gamelist']['game'])
                         self.send_game_list()
                     except:
                         traceback.print_exc()
@@ -260,7 +259,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         If no target is passed the gamelist is broadcasted to all
         clients.
         """
-        games = self.game_list.get_all_games()
+        games = self.games.get_all_games()
         if not to:
             for jid in list(self.nicks):
                 iq = self.make_iq_result(ito=jid)
