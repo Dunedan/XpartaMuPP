@@ -80,7 +80,8 @@ class ProfileXmppPlugin(ElementBase):
     def add_recipient(self, recipient):
         self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
 
-    def add_item(self, player, rating, highest_rating, rank, total_games_played, wins, losses):
+    def add_item(self, player, rating, highest_rating="0", rank="0", total_games_played="0",
+                 wins="0", losses="0"):
         item_xml = ET.Element("profile", {"player": player, "rating": rating,
                                           "highestRating": highest_rating, "rank": rank,
                                           "totalGamesPlayed": total_games_played, "wins": wins,

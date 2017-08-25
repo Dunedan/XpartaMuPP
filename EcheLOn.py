@@ -624,9 +624,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
     def send_profile_not_found(self, to, player, recipient):
         """Send a profile not-found error to a specified target."""
         iq = self.make_iq_result(ito=to)
-        filler = str(0)
         stanza = ProfileXmppPlugin()
-        stanza.add_item(player, str(-2), filler, filler, filler, filler, filler)
+        stanza.add_item(player, str(-2))
         stanza.add_command(player)
         stanza.add_recipient(recipient)
         iq.set_payload(stanza)
