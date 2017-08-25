@@ -402,7 +402,7 @@ class PlayerXmppPlugin(ElementBase):
 
     name = 'query'
     namespace = 'jabber:iq:player'
-    interfaces = set(('game', 'online'))
+    interfaces = {'game', 'online'}
     sub_interfaces = interfaces
     plugin_attrib = 'player'
 

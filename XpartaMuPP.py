@@ -31,7 +31,7 @@ from stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlug
                      ProfileXmppPlugin)
 
 
-class GameList():
+class GameList(object):
     """Class to tracks all games in the lobby."""
 
     def __init__(self):
@@ -75,7 +75,7 @@ class PlayerXmppPlugin(ElementBase):
 
     name = 'query'
     namespace = 'jabber:iq:player'
-    interfaces = set(('online'))
+    interfaces = {'online'}
     sub_interfaces = interfaces
     plugin_attrib = 'player'
 
@@ -180,13 +180,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """
         if iq['type'] == 'error':
             logging.error('iqhandler error' + iq['error']['condition'])
-            #self.disconnect()
+            # self.disconnect()
         elif iq['type'] == 'get':
             # Request lists.
             # Send lists/register on leaderboard; depreciated once muc_online
             #  can send lists/register automatically on joining the room.
             if 'boardlist' in iq.plugins:
-                command = iq['boardlist']['command']
                 try:
                     self.relay_board_list_request(iq['from'])
                 except:
@@ -389,9 +388,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         clients.
         """
         iq = self.make_iq_result(ito=to)
-        #for i in board:
-        #    stanza.addItem(board[i]['name'], board[i]['rating'])
-        #stanza.addCommand('boardlist')
+        # for i in board:
+        #     stanza.addItem(board[i]['name'], board[i]['rating'])
+        # stanza.addCommand('boardlist')
         iq.set_payload(board_list)
 
         if not to:

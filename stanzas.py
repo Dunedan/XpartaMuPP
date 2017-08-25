@@ -6,7 +6,7 @@ class BoardListXmppPlugin(ElementBase):
 
     name = 'query'
     namespace = 'jabber:iq:boardlist'
-    interfaces = set(('board', 'command', 'recipient'))
+    interfaces = {'board', 'command', 'recipient'}
     sub_interfaces = interfaces
     plugin_attrib = 'boardlist'
 
@@ -25,7 +25,7 @@ class GameListXmppPlugin(ElementBase):
 
     name = 'query'
     namespace = 'jabber:iq:gamelist'
-    interfaces = set(('game', 'command'))
+    interfaces = {'game', 'command'}
     sub_interfaces = interfaces
     plugin_attrib = 'gamelist'
 
@@ -70,7 +70,7 @@ class ProfileXmppPlugin(ElementBase):
 
     name = 'query'
     namespace = 'jabber:iq:profile'
-    interfaces = set(('profile', 'command', 'recipient'))
+    interfaces = {'profile', 'command', 'recipient'}
     sub_interfaces = interfaces
     plugin_attrib = 'profile'
 
