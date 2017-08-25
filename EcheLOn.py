@@ -47,23 +47,22 @@ class LeaderboardList(object):
     def get_profile(self, jid):
         """Retrieve the profile for the specified JID."""
         stats = {}
-        player = db.query(Player).filter(Player.jid.ilike(str(jid)))
+        player = db.query(Player).filter(Player.jid.ilike(jid)).first()
 
-        if not player.first():
+        if not player:
+            logging.debug("Couldn't find profile for player %s", jid)
             return
 
-        queried_player = player.first()
-        player_id = queried_player.id
-        if queried_player.rating != -1:
-            stats['rating'] = str(queried_player.rating)
-            rank = db.query(Player).filter(Player.rating >= queried_player.rating).count()
+        if player.rating != -1:
+            stats['rating'] = str(player.rating)
+            rank = db.query(Player).filter(Player.rating >= player.rating).count()
             stats['rank'] = str(rank)
 
-        if queried_player.highest_rating != -1:
-            stats['highestRating'] = str(queried_player.highest_rating)
+        if player.highest_rating != -1:
+            stats['highestRating'] = str(player.highest_rating)
 
-        games_played = db.query(PlayerInfo).filter_by(player_id=player_id).count()
-        wins = db.query(Game).filter_by(winner_id=player_id).count()
+        games_played = db.query(PlayerInfo).filter_by(player_id=(player.id)).count()
+        wins = db.query(Game).filter_by(winner_id=(player.id)).count()
         stats['totalGamesPlayed'] = str(games_played)
         stats['wins'] = str(wins)
         stats['losses'] = str(games_played - wins)
@@ -75,13 +74,15 @@ class LeaderboardList(object):
         Return either the newly created instance of the Player model,
         or the one that already exists in the database.
         """
-        players = db.query(Player).filter_by(jid=str(jid))
-        if not players.first():
-            player = Player(jid=str(jid), rating=-1)
-            db.add(player)
-            db.commit()
+        player = db.query(Player).filter_by(jid=jid).first()
+        if player:
             return player
-        return players.first()
+
+        player = Player(jid=jid, rating=-1)
+        db.add(player)
+        db.commit()
+        logging.debug("Created player %s", jid)
+        return player
 
     def remove_player(self, jid):
         """Remove a player(JID) from database.
@@ -89,14 +90,15 @@ class LeaderboardList(object):
         Returns the player that was removed, or None if that player
         didn't exist.
         """
-        players = db.query(Player).filter_by(jid=jid)
-        player = players.first()
-        if not player:
-            return None
-        players.delete()
-        return player
+        player = db.query(Player).filter_by(jid=jid).first()
+        if player:
+            player.delete()
+            logging.debug("Deleted player %s", jid)
+            return player
 
-    def add_game(self, gamereport):
+        return None
+
+    def add_game(self, game_report):
         """Add a game to the database.
 
         Add a game to the database and updates the data on a
@@ -109,20 +111,17 @@ class LeaderboardList(object):
         """
         # Discard any games still in progress.
         if any(map(lambda state: state == 'active',
-                   dict.values(gamereport['playerStates']))):
+                   dict.values(game_report['playerStates']))):
             return None
 
         players = map(lambda jid: db.query(Player).filter(Player.jid.ilike(str(jid))).first(),
-                      dict.keys(gamereport['playerStates']))
+                      dict.keys(game_report['playerStates']))
 
         winning_jid = list(dict.keys({jid: state for jid, state in
-                                      gamereport['playerStates'].items()
+                                      game_report['playerStates'].items()
                                       if state == 'won'}))[0]
 
-        def get(stat, jid):
-            return gamereport[stat][jid]
-
-        #single_stats = {'timeElapsed', 'mapName', 'teamsLocked', 'matchID'}
+        # single_stats = {'timeElapsed', 'mapName', 'teamsLocked', 'matchID'}
         total_score_stats = {'economyScore', 'militaryScore', 'totalScore'}
         resource_stats = {'foodGathered', 'foodUsed', 'woodGathered', 'woodUsed', 'stoneGathered',
                           'stoneUsed', 'metalGathered', 'metalUsed', 'vegetarianFoodGathered',
@@ -155,16 +154,17 @@ class LeaderboardList(object):
 
         stats = total_score_stats | resource_stats | units_stats | buildings_stats | market_stats \
             | misc_stats
+
         player_infos = []
         for player in players:
             jid = player.jid
-            playerinfo = PlayerInfo(player=player)
-            for reportname in stats:
-                setattr(playerinfo, reportname, get(reportname, jid.lower()))
-            player_infos.append(playerinfo)
+            player_info = PlayerInfo(player=player)
+            for report_name in stats:
+                setattr(player_info, report_name, game_report[report_name][jid.lower()])
+            player_infos.append(player_info)
 
-        game = Game(map=gamereport['mapName'], duration=int(gamereport['timeElapsed']),
-                    teamsLocked=bool(gamereport['teamsLocked']), matchID=gamereport['matchID'])
+        game = Game(map=game_report['mapName'], duration=int(game_report['timeElapsed']),
+                    teamsLocked=bool(game_report['teamsLocked']), matchID=game_report['matchID'])
         game.players.extend(players)
         game.player_info.extend(player_infos)
         game.winner = db.query(Player).filter(Player.jid.ilike(str(winning_jid))).first()
@@ -172,20 +172,20 @@ class LeaderboardList(object):
         db.commit()
         return game
 
-    def verify_game(self, gamereport):
+    def verify_game(self, game_report):
         """Check whether or not the game should be rated.
 
         Return a boolean based on whether the game should be rated.
         Here, we can specify the criteria for rated games.
         """
         winning_jids = list(dict.keys({jid: state for jid, state in
-                                      gamereport['playerStates'].items()
-                                      if state == 'won'}))
+                                       game_report['playerStates'].items()
+                                       if state == 'won'}))
         # We only support 1v1s right now. TODO: Support team games.
-        if len(winning_jids) * 2 > len(dict.keys(gamereport['playerStates'])):
+        if len(winning_jids) * 2 > len(dict.keys(game_report['playerStates'])):
             # More than half the people have won. This is not a balanced team game or duel.
             return False
-        if len(dict.keys(gamereport['playerStates'])) != 2:
+        if len(dict.keys(game_report['playerStates'])) != 2:
             return False
         return True
 
@@ -252,15 +252,15 @@ class LeaderboardList(object):
         """
         return self.last_rated
 
-    def add_and_rate_game(self, gamereport):
+    def add_and_rate_game(self, game_report):
         """Call addGame
 
         If the game has only two players, also calls rateGame.
 
         Returns the result of addGame.
         """
-        game = self.add_game(gamereport)
-        if game and self.verify_game(gamereport):
+        game = self.add_game(game_report)
+        if game and self.verify_game(game_report):
             self.rate_game(game)
         else:
             self.last_rated = ""
@@ -282,16 +282,16 @@ class LeaderboardList(object):
         The returned list is by nick because the client can't link JID
         to nick conveniently.
         """
-        ratinglist = {}
+        ratings = {}
         player_filter = func.upper(Player.jid).in_([str(jid).upper() for jid in list(nicks)])
         players = db.query(Player.jid, Player.rating).filter(player_filter)
         for player in players:
             rating = str(player.rating) if player.rating != -1 else ''
             for jid in list(nicks):
                 if jid.upper() == player.jid.upper():
-                    ratinglist[nicks[jid]] = {'name': nicks[jid], 'rating': rating}
+                    ratings[nicks[jid]] = {'name': nicks[jid], 'rating': rating}
                     break
-        return ratinglist
+        return ratings
 
 
 class ReportManager(object):
@@ -315,7 +315,7 @@ class ReportManager(object):
         if clean_raw_game_report not in self.interim_report_tracker:
             # Store the game.
             self.interim_report_tracker.append(clean_raw_game_report)
-            # Initilize the JIDs and store the initial JID.
+            # Initialize the JIDs and store the initial JID.
             num_players = self.get_num_players(raw_game_report)
             jids = [None] * num_players
             if num_players - int(raw_game_report["playerID"]) > -1:
@@ -557,7 +557,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XmPP ID '%s' known to send boardlist to", str(to))
+            logging.error("No player with the XMPP ID '%s' known to send boardlist to", str(to))
             return
 
         try:
@@ -578,7 +578,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XmPP ID '%s' known to send ratinglist to", str(to))
+            logging.error("No player with the XMPP ID '%s' known to send ratinglist to", str(to))
             return
 
         try:
@@ -612,7 +612,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
+            logging.error("No player with the XMPP ID '%s' known to send profile to", str(to))
             return
 
         try:
@@ -631,7 +631,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
+            logging.error("No player with the XMPP ID '%s' known to send profile to", str(to))
             return
 
         try:
