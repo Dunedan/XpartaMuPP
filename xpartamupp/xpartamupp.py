@@ -27,8 +27,8 @@ from sleekxmpp.xmlstream import ElementBase, register_stanza_plugin, ET
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 
-from stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlugin,
-                     ProfileXmppPlugin)
+from xpartamupp.stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlugin,
+                                ProfileXmppPlugin)
 
 
 class Games(object):
@@ -434,7 +434,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             self.ratings_bot_warned = True
 
 
-if __name__ == '__main__':
+def main():
+    """Entry point a console script."""
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="XpartaMuPP - XMPP Multiplayer Game Manager")
 
@@ -474,3 +475,7 @@ if __name__ == '__main__':
         xmpp.process(threaded=False)
     else:
         logging.error("Unable to connect")
+
+
+if __name__ == '__main__':
+    main()

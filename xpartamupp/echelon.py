@@ -27,10 +27,10 @@ from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 from sqlalchemy import func
 
-from ELO import get_rating_adjustment
-from LobbyRanking import session as db, Game, Player, PlayerInfo
+from xpartamupp.elo import get_rating_adjustment
+from xpartamupp.lobby_ranking import session as db, Game, Player, PlayerInfo
 
-from stanzas import BoardListXmppPlugin, GameReportXmppPlugin, ProfileXmppPlugin
+from xpartamupp.stanzas import BoardListXmppPlugin, GameReportXmppPlugin, ProfileXmppPlugin
 
 # Rating that new players should be inserted into the
 # database with, before they've played any games.
@@ -531,10 +531,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                     logging.error("Failed to update game statistics for %s", iq['from'].bare)
             elif 'player' in iq.plugins:
                 player = iq['player']['online']
-                #try:
                 self.leaderboard.get_or_create_player(player)
-                #except:
-                #    logging.debug("Could not create new user %s", player)
         else:
             logging.error("Failed to process stanza type '%s' received from %s",
                           iq['type'], iq['from'].bare)
@@ -641,7 +638,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.error("Failed to send profile")
 
 
-if __name__ == '__main__':
+def main():
+    """Entry point a console script."""
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="EcheLOn - XMPP Rating Bot")
 
@@ -679,3 +677,7 @@ if __name__ == '__main__':
         xmpp.process(threaded=False)
     else:
         logging.error("Unable to connect")
+
+
+if __name__ == '__main__':
+    main()
