@@ -34,7 +34,7 @@ from xpartamupp.stanzas import BoardListXmppPlugin, GameReportXmppPlugin, Profil
 
 # Rating that new players should be inserted into the
 # database with, before they've played any games.
-leaderboard_default_rating = 1200
+LEADERBOARD_DEFAULT_RATING = 1200
 
 
 class LeaderboardList(object):
@@ -208,9 +208,9 @@ class LeaderboardList(object):
         result = 1 if player1 == game.winner else -1
         # Player's ratings are -1 unless they have played a rated game.
         if player1.rating == -1:
-            player1.rating = leaderboard_default_rating
+            player1.rating = LEADERBOARD_DEFAULT_RATING
         if player2.rating == -1:
-            player2.rating = leaderboard_default_rating
+            player2.rating = LEADERBOARD_DEFAULT_RATING
 
         rating_adjustment1 = int(get_rating_adjustment(player1.rating, player2.rating,
                                                        len(player1.games), len(player2.games),

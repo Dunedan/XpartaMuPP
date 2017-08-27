@@ -17,23 +17,23 @@
 # Difference between two ratings such that it is
 # regarded as a "sure win" for the higher player.
 # No points are gained or lost for such a game.
-elo_sure_win_difference = 600.0
+ELO_SURE_WIN_DIFFERENCE = 600.0
 
 # Lower ratings "move faster" and change more
 # dramatically than higher ones. Anything rating above
 # this value moves at the same rate as this value.
-elo_k_factor_constant_rating = 2200.0
+ELO_K_FACTOR_CONSTANT_RATING = 2200.0
 
 # This preset number of games is the number of games
 # where a player is considered "stable".
 # Rating volatility is constant after this number.
-volatility_constant = 20.0
+VOLATILITY_CONSTANT = 20.0
 
 # Fair rating adjustment loses against inflation
 # This constant will battle inflation.
 # NOTE: This can be adjusted as needed by a
 # bot/server administrator
-anti_inflation = 0.015
+ANTI_INFLATION = 0.015
 
 
 def get_rating_adjustment(rating, opponent_rating, games_played,
@@ -54,19 +54,19 @@ def get_rating_adjustment(rating, opponent_rating, games_played,
     TODO: Team games.
 
     """
-    player_volatility = (min(games_played, volatility_constant) / volatility_constant + 0.25) / \
+    player_volatility = (min(games_played, VOLATILITY_CONSTANT) / VOLATILITY_CONSTANT + 0.25) / \
         1.25
-    rating_k_factor = 50.0 * (min(rating, elo_k_factor_constant_rating) /
-                              elo_k_factor_constant_rating + 1.0) / 2.0
+    rating_k_factor = 50.0 * (min(rating, ELO_K_FACTOR_CONSTANT_RATING) /
+                              ELO_K_FACTOR_CONSTANT_RATING + 1.0) / 2.0
     volatility = rating_k_factor * player_volatility
     difference = opponent_rating - rating
     if result == 1:
-        return round(max(0, (difference + result * elo_sure_win_difference) /
-                         volatility - anti_inflation))
+        return round(max(0, (difference + result * ELO_SURE_WIN_DIFFERENCE) /
+                         volatility - ANTI_INFLATION))
     elif result == -1:
-        return round(min(0, (difference + result * elo_sure_win_difference) /
-                         volatility - anti_inflation))
-    return round(difference / volatility - anti_inflation)
+        return round(min(0, (difference + result * ELO_SURE_WIN_DIFFERENCE) /
+                         volatility - ANTI_INFLATION))
+    return round(difference / volatility - ANTI_INFLATION)
 
 # Inflation test - A slightly negative is better than a slightly positive
 # Lower rated players stop playing more often than higher rated players
