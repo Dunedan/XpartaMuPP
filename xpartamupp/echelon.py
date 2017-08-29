@@ -478,7 +478,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         This method should be very robust because we could receive anything
         """
         if iq['type'] == 'error':
-            logging.error('iqhandler error' + iq['error']['condition'])
+            logging.error('iqhandler error %s', iq['error']['condition'])
             #self.disconnect()
         elif iq['type'] == 'get':
             # Request lists.
