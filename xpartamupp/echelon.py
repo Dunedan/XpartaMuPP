@@ -25,10 +25,11 @@ from sleekxmpp.stanza import Iq
 from sleekxmpp.xmlstream import ElementBase, register_stanza_plugin, ET
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
-from sqlalchemy import func
+import sqlalchemy
+from sqlalchemy.orm import sessionmaker
 
 from xpartamupp.elo import get_rating_adjustment
-from xpartamupp.lobby_ranking import session as db, Game, Player, PlayerInfo
+from xpartamupp.lobby_ranking import Game, Player, PlayerInfo
 
 from xpartamupp.stanzas import BoardListXmppPlugin, GameReportXmppPlugin, ProfileXmppPlugin
 
@@ -44,10 +45,13 @@ class LeaderboardList(object):
         self.room = room
         self.last_rated = ""
 
+        engine = sqlalchemy.create_engine('sqlite:///lobby_rankings.sqlite3')
+        self.db = sessionmaker(bind=engine)()
+
     def get_profile(self, jid):
         """Retrieve the profile for the specified JID."""
         stats = {}
-        player = db.query(Player).filter(Player.jid.ilike(jid)).first()
+        player = self.db.query(Player).filter(Player.jid.ilike(jid)).first()
 
         if not player:
             logging.debug("Couldn't find profile for player %s", jid)
@@ -55,14 +59,14 @@ class LeaderboardList(object):
 
         if player.rating != -1:
             stats['rating'] = str(player.rating)
-            rank = db.query(Player).filter(Player.rating >= player.rating).count()
+            rank = self.db.query(Player).filter(Player.rating >= player.rating).count()
             stats['rank'] = str(rank)
 
         if player.highest_rating != -1:
             stats['highestRating'] = str(player.highest_rating)
 
-        games_played = db.query(PlayerInfo).filter_by(player_id=(player.id)).count()
-        wins = db.query(Game).filter_by(winner_id=(player.id)).count()
+        games_played = self.db.query(PlayerInfo).filter_by(player_id=(player.id)).count()
+        wins = self.db.query(Game).filter_by(winner_id=(player.id)).count()
         stats['totalGamesPlayed'] = str(games_played)
         stats['wins'] = str(wins)
         stats['losses'] = str(games_played - wins)
@@ -74,13 +78,13 @@ class LeaderboardList(object):
         Return either the newly created instance of the Player model,
         or the one that already exists in the database.
         """
-        player = db.query(Player).filter_by(jid=jid).first()
+        player = self.db.query(Player).filter_by(jid=jid).first()
         if player:
             return player
 
         player = Player(jid=jid, rating=-1)
-        db.add(player)
-        db.commit()
+        self.db.add(player)
+        self.db.commit()
         logging.debug("Created player %s", jid)
         return player
 
@@ -90,7 +94,7 @@ class LeaderboardList(object):
         Returns the player that was removed, or None if that player
         didn't exist.
         """
-        player = db.query(Player).filter_by(jid=jid).first()
+        player = self.db.query(Player).filter_by(jid=jid).first()
         if player:
             player.delete()
             logging.debug("Deleted player %s", jid)
@@ -110,11 +114,10 @@ class LeaderboardList(object):
         - Inserts a new Game instance into the database.
         """
         # Discard any games still in progress.
-        if any(map(lambda state: state == 'active',
-                   dict.values(game_report['playerStates']))):
+        if any(map(lambda state: state == 'active', dict.values(game_report['playerStates']))):
             return None
 
-        players = map(lambda jid: db.query(Player).filter(Player.jid.ilike(str(jid))).first(),
+        players = map(lambda jid: self.db.query(Player).filter(Player.jid.ilike(str(jid))).first(),
                       dict.keys(game_report['playerStates']))
 
         winning_jid = list(dict.keys({jid: state for jid, state in
@@ -167,9 +170,9 @@ class LeaderboardList(object):
                     teamsLocked=bool(game_report['teamsLocked']), matchID=game_report['matchID'])
         game.players.extend(players)
         game.player_info.extend(player_infos)
-        game.winner = db.query(Player).filter(Player.jid.ilike(str(winning_jid))).first()
-        db.add(game)
-        db.commit()
+        game.winner = self.db.query(Player).filter(Player.jid.ilike(str(winning_jid))).first()
+        self.db.add(game)
+        self.db.commit()
         return game
 
     def verify_game(self, game_report):
@@ -242,7 +245,7 @@ class LeaderboardList(object):
             player1.highest_rating = player1.rating
         if player2.rating > player2.highest_rating:
             player2.highest_rating = player2.rating
-        db.commit()
+        self.db.commit()
         return self
 
     def get_last_rated_message(self):
@@ -269,7 +272,7 @@ class LeaderboardList(object):
     def get_board(self):
         """Returns a dictionary of player rankings to JIDs for sending."""
         board = {}
-        players = db.query(Player).filter(Player.rating != -1) \
+        players = self.db.query(Player).filter(Player.rating != -1) \
             .order_by(Player.rating.desc()).limit(100).all()
         for rank, player in enumerate(players):  # pylint: disable=unused-variable
             board[player.jid] = {'name': '@'.join(player.jid.split('@')[:-1]),
@@ -283,8 +286,9 @@ class LeaderboardList(object):
         to nick conveniently.
         """
         ratings = {}
-        player_filter = func.upper(Player.jid).in_([str(jid).upper() for jid in list(nicks)])
-        players = db.query(Player.jid, Player.rating).filter(player_filter)
+        player_filter = sqlalchemy.func.upper(Player.jid).in_(
+            [str(jid).upper() for jid in list(nicks)])
+        players = self.db.query(Player.jid, Player.rating).filter(player_filter)
         for player in players:
             rating = str(player.rating) if player.rating != -1 else ''
             for jid in list(nicks):

@@ -18,12 +18,9 @@
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, Integer, String, Boolean
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
-engine = sqlalchemy.create_engine('sqlite:///lobby_rankings.sqlite3')
-Session = sessionmaker(bind=engine)
-session = Session()
 Base = declarative_base()
 
 
@@ -144,4 +141,5 @@ class Game(Base):
 
 
 if __name__ == '__main__':
+    engine = sqlalchemy.create_engine('sqlite:///lobby_rankings.sqlite3')
     Base.metadata.create_all(engine)
