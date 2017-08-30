@@ -41,8 +41,8 @@ LEADERBOARD_DEFAULT_RATING = 1200
 class LeaderboardList(object):
     """Class that contains and manages leaderboard data."""
 
-    def __init__(self, room):
-        self.room = room
+    def __init__(self):
+        """Initialize the leaderboard."""
         self.last_rated = ""
 
         engine = sqlalchemy.create_engine('sqlite:///lobby_rankings.sqlite3')
@@ -426,7 +426,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.nick = nick
 
         # Init leaderboard object
-        self.leaderboard = LeaderboardList(room)
+        self.leaderboard = LeaderboardList()
 
         # gameReport to leaderboard abstraction
         self.report_manager = ReportManager(self.leaderboard)
