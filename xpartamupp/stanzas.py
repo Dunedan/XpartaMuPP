@@ -11,12 +11,28 @@ class BoardListXmppPlugin(ElementBase):
     plugin_attrib = 'boardlist'
 
     def add_command(self, command):
+        """Add a command to the extension.
+
+        Arguments:
+            command (str): Command to add
+        """
         self.xml.append(ET.fromstring("<command>%s</command>" % command))
 
     def add_recipient(self, recipient):
+        """Add a recipient to the extension.
+
+        Arguments:
+            recipient (str): Recipient to add
+        """
         self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
 
     def add_item(self, name, rating):
+        """Add an item to the extension.
+
+        Argumnets:
+            name (str): Name of the player to add
+            rating (str): Rating of the player to add
+        """
         self.xml.append(ET.Element("board", {"name": name, "rating": rating}))
 
 
@@ -30,10 +46,22 @@ class GameListXmppPlugin(ElementBase):
     plugin_attrib = 'gamelist'
 
     def add_game(self, data):
+        """Add a game to the extension.
+
+        Arguments:
+            data (?): ?
+        """
         self.xml.append(ET.Element("game", data))
 
     def get_game(self):
-        """Required to parse incoming stanzas with this extension."""
+        """Get game from stanza.
+
+        Required to parse incoming stanzas with this extension.
+
+        Returns:
+            dict with game data
+
+        """
         game = self.xml.find('{%s}game' % self.namespace)
         data = {}
         for key, item in game.items():
@@ -51,13 +79,32 @@ class GameReportXmppPlugin(ElementBase):
     sub_interfaces = interfaces
 
     def add_sender(self, sender):
+        """Add a sender to the extension.
+
+        Arguments:
+            sender (str): ?
+
+        """
         self.xml.append(ET.fromstring("<sender>%s</sender>" % sender))
 
-    def add_game(self, gr):
-        self.xml.append(ET.fromstring(str(gr)).find('{%s}game' % self.namespace))
+    def add_game(self, game_report):
+        """Add a game to the extension.
+
+        Arguments:
+            game_report (dict): a report about a game
+
+        """
+        self.xml.append(ET.fromstring(str(game_report)).find('{%s}game' % self.namespace))
 
     def get_game(self):
-        """Required to parse incoming stanzas with this extension."""
+        """Get game from stanza.
+
+        Required to parse incoming stanzas with this extension.
+
+        Returns:
+            dict with game information
+
+        """
         game = self.xml.find('{%s}game' % self.namespace)
         data = {}
         for key, item in game.items():
@@ -75,13 +122,37 @@ class ProfileXmppPlugin(ElementBase):
     plugin_attrib = 'profile'
 
     def add_command(self, command):
+        """Add a command to the extension.
+
+        Arguments:
+            command (str): ?
+
+        """
         self.xml.append(ET.fromstring("<command>%s</command>" % command))
 
     def add_recipient(self, recipient):
+        """Add a recipient to the extension.
+
+        Arguments:
+            recipient (str): ?
+
+        """
         self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
 
     def add_item(self, player, rating, highest_rating="0", rank="0", total_games_played="0",
                  wins="0", losses="0"):
+        """Add an item to the extension.
+
+        Arguments:
+            player (str): Name of the player
+            rating (str): Current rating of the player
+            highest_rating (str): Highest rating the player had
+            rank (str): Rank of the player
+            total_games_played (str): Total number of games the player
+                                      played
+            wins (str): Number of won games the player had
+            losses (str): Number of lost games the player had
+        """
         item_xml = ET.Element("profile", {"player": player, "rating": rating,
                                           "highestRating": highest_rating, "rank": rank,
                                           "totalGamesPlayed": total_games_played, "wins": wins,

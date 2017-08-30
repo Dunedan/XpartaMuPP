@@ -35,25 +35,49 @@ class Games(object):
     """Class to tracks all games in the lobby."""
 
     def __init__(self):
+        """Initialize with empty games."""
         self.games = {}
 
     def add_game(self, jid, data):
-        """Add a game."""
+        """Add a game.
+
+        Arguments:
+            jid (str): JID of the player who started the game
+            data (?): information about the game
+
+        """
         data['players-init'] = data['players']
         data['nbp-init'] = data['nbp']
         data['state'] = 'init'
         self.games[jid] = data
 
     def remove_game(self, jid):
-        """Remove a game attached to a JID."""
+        """Remove a game attached to a JID.
+
+        Arguments:
+            jid (str): JID of the player whoms game to remove.
+
+        """
         del self.games[jid]
 
     def get_all_games(self):
-        """Return all games."""
+        """Return all games.
+
+        Returns:
+            dict containing all games with the JID of the player who
+            started the game as key.
+
+        """
         return self.games
 
     def change_game_state(self, jid, data):
-        """Switch game state between running and waiting."""
+        """Switch game state between running and waiting.
+
+        Arguments:
+            jid (str): JID of the player whose game to change
+            data (?): ?
+
+        """
         if jid in self.games:
             if self.games[jid]['nbp-init'] > data['nbp']:
                 logging.debug("change game (%s) state from %s to %s", jid,
@@ -79,23 +103,40 @@ class PlayerXmppPlugin(ElementBase):
     plugin_attrib = 'player'
 
     def add_player_online(self, player):
+        """Add a player to the extension.
+
+        Arguments:
+            player (str): JID of the player to add
+
+        """
         self.xml.append(ET.fromstring("<online>%s</online>" % player))
 
 
 class XpartaMuPP(sleekxmpp.ClientXMPP):
     """Main class which handles IQ data and sends new data."""
 
-    def __init__(self, sjid, password, room, nick, ratingsbot):
+    def __init__(self, sjid, password, room, nick, ratings_bot):
+        """Initialize XpartaMuPP.
+
+        Arguments:
+             sjid (str): JID to use for authentication
+             password (str): password to use for authentication
+             room (str): XMPP MUC room to join
+             nick (str): Nick to use
+             ratings_bot (str): JID of the ratings bot
+
+        """
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
         self.sjid = sjid
         self.room = room
         self.nick = nick
         self.ratings_bot_warned = False
 
-        self.ratings_bot = ratingsbot
+        self.ratings_bot = ratings_bot
         self.games = Games()
 
-        # Store mapping of nicks and XmppIDs, attached via presence stanza
+        # Store mapping of nicks and XmppIDs, attached via presence
+        # stanza
         self.nicks = {}
 
         register_stanza_plugin(Iq, PlayerXmppPlugin)
@@ -104,15 +145,15 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'), self.iqhandler,
+        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'), self.iq_handler,
                                        instream=True))
-        self.register_handler(Callback('Iq Gamelist', StanzaPath('iq/gamelist'), self.iqhandler,
+        self.register_handler(Callback('Iq Gamelist', StanzaPath('iq/gamelist'), self.iq_handler,
                                        instream=True))
-        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'), self.iqhandler,
+        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'), self.iq_handler,
                                        instream=True))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
-                                       self.iqhandler, instream=True))
-        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'), self.iqhandler,
+                                       self.iq_handler, instream=True))
+        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'), self.iq_handler,
                                        instream=True))
 
         self.add_event_handler("session_start", self.start)
@@ -121,14 +162,24 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.add_event_handler("groupchat_message", self.muc_message)
 
     def start(self, event):  # pylint: disable=unused-argument
-        """Join MUC channel and announce presence."""
+        """Join MUC channel and announce presence.
+
+        Arguments:
+            event (?): ?
+
+        """
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
         self.send_presence()
         self.get_roster()
         logging.info("XpartaMuPP started")
 
     def muc_online(self, presence):
-        """Add joining players to the list of players."""
+        """Add joining players to the list of players.
+
+        Arguments:
+            presence (?): ?
+
+        """
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
@@ -141,11 +192,16 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 self.nicks[jid] = nick
 
             # Send game list to new player.
-            self.send_game_list(jid)
-            logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
+            self.send_game_list(presence['muc']['jid'])
+            logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
 
     def muc_offline(self, presence):
-        """Remove leaving players from the list of players."""
+        """Remove leaving players from the list of players.
+
+        Arguments:
+            presence (?): ?
+
+        """
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
@@ -160,29 +216,43 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             if jid in self.nicks:
                 del self.nicks[jid]
 
+            logging.debug("Client '%s' with nick '%s' disconnected", jid, nick)
+
         if nick == self.ratings_bot:
             self.ratings_bot_warned = False
 
     def muc_message(self, msg):
-        """Process new messages from the chatroom."""
+        """Process messages in the MUC room.
+
+        Respond to messages highlighting the bots name with an
+        informative message.
+
+        Arguments:
+            msg (?): ?
+        """
         if msg['mucnick'] != self.nick and self.nick.lower() in msg['body'].lower():
             self.send_message(mto=msg['from'].bare,
                               mbody="I am the administrative bot in this lobby and cannot "
                                     "participate in any games.",
                               mtype='groupchat')
 
-    def iqhandler(self, iq):
+    def iq_handler(self, iq):
         """Handle the custom stanzas.
 
-        This method should be very robust because we could receive anything
+        This method should be very robust because we could receive
+        anything.
+
+        Arguments:
+            iq (?): ?
         """
         if iq['type'] == 'error':
             logging.error('iqhandler error %s', iq['error']['condition'])
             # self.disconnect()
         elif iq['type'] == 'get':
             # Request lists.
-            # Send lists/register on leaderboard; depreciated once muc_online
-            #  can send lists/register automatically on joining the room.
+            # Send lists/register on leaderboard; depreciated once
+            # muc_online can send lists/register automatically on
+            # joining the room.
             if 'boardlist' in iq.plugins:
                 try:
                     self.relay_board_list_request(self.ratings_bot, iq['from'])
@@ -257,6 +327,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         If no target is passed the gamelist is broadcasted to all
         clients.
+
+        Arguments:
+            to (sleekxmpp.xmlstream.jid.JID): Player to send the game
+                                              list to. If None, the
+                                              game list will be
+                                              broadcasted
         """
         games = self.games.get_all_games()
         if not to:
@@ -293,7 +369,14 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             logging.error("Failed to send game list")
 
     def relay_board_list_request(self, recipient, player):
-        """Send a boardListRequest to EcheLOn."""
+        """Send a boardListRequest to EcheLOn.
+
+        Arguments:
+            recipient (str): JID of the ratings bot
+            player (sleekxmpp.xmlstream.jid.JID): Player who requested
+                                                  the board list
+
+        """
         if recipient not in self.nicks:
             self.warn_ratings_bot_offline()
             return
@@ -310,7 +393,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             logging.error("Failed to send leaderboard list request")
 
     def relay_rating_list_request(self, recipient):
-        """Send a ratingListRequest to EcheLOn."""
+        """Send a ratingListRequest to EcheLOn.
+
+        Arguments:
+            recipient (?):  JID of the ratings bot
+
+        """
         if recipient not in self.nicks:
             self.warn_ratings_bot_offline()
             return
@@ -326,7 +414,14 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             logging.error("Failed to send rating list request")
 
     def relay_profile_request(self, recipient, player, command):
-        """Send a profileRequest to EcheLOn."""
+        """Send a profileRequest to EcheLOn.
+
+        Arguments:
+            recipient (?):  JID of the ratings bot
+            player (sleekxmpp.xmlstream.jid.JID): ?
+            command (?): ?
+
+        """
         if recipient not in self.nicks:
             self.warn_ratings_bot_offline()
             return
@@ -343,7 +438,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             logging.error("Failed to send profile request")
 
     def relay_player_online(self, jid):
-        """Tells EcheLOn that someone comes online."""
+        """Tells EcheLOn that someone comes online.
+
+        Arguments:
+            jid (?): ?
+
+        """
         to = self.ratings_bot
         if to not in self.nicks:
             return
@@ -399,7 +499,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         else:
             # Leaderboard
             if str(to) not in self.nicks:
-                logging.error("No player with the XmPP ID '%s' known to send boardlist to",
+                logging.error("No player with the XMPP ID '%s' known to send board list to",
                               str(to))
                 return
             try:

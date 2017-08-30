@@ -39,7 +39,7 @@ LEADERBOARD_DEFAULT_RATING = 1200
 
 
 class LeaderboardList(object):
-    """Class that contains and manages leaderboard data."""
+    """Class that provides and manages leaderboard data."""
 
     def __init__(self):
         """Initialize the leaderboard."""
@@ -49,13 +49,22 @@ class LeaderboardList(object):
         self.db = sessionmaker(bind=engine)()
 
     def get_profile(self, jid):
-        """Retrieve the profile for the specified JID."""
+        """Get the leaderboard profile for the specified player.
+
+        Arguments:
+            jid (str): JID of the player to retrieve the profile for
+
+        Returns:
+            dict with statistics about the requested player or None if
+            the player isn't known
+
+        """
         stats = {}
         player = self.db.query(Player).filter(Player.jid.ilike(jid)).first()
 
         if not player:
             logging.debug("Couldn't find profile for player %s", jid)
-            return
+            return None
 
         if player.rating != -1:
             stats['rating'] = player.rating
@@ -73,10 +82,18 @@ class LeaderboardList(object):
         return stats
 
     def get_or_create_player(self, jid):
-        """Store a player(JID) in the database if they don't yet exist.
+        """Get a player from the leaderboard database.
 
-        Return either the newly created instance of the Player model,
-        or the one that already exists in the database.
+        Get player information from the leaderboard database and
+        create him first, if he doesn't exist yet.
+
+        Arguments:
+            jid (str): JID of the player to get
+
+        Returns:
+            Player instance representing the player specified by the
+            supplied JID
+
         """
         player = self.db.query(Player).filter_by(jid=jid).first()
         if player:
@@ -89,10 +106,15 @@ class LeaderboardList(object):
         return player
 
     def remove_player(self, jid):
-        """Remove a player(JID) from database.
+        """Remove a player from leaderboard database.
 
-        Returns the player that was removed, or None if that player
-        didn't exist.
+        Arguments:
+            jid (str): JID of the player to remove
+
+        Returns:
+            Player that was removed or None if that player didn't
+            exist
+
         """
         player = self.db.query(Player).filter_by(jid=jid).first()
         if player:
@@ -105,13 +127,16 @@ class LeaderboardList(object):
     def add_game(self, game_report):
         """Add a game to the database.
 
-        Add a game to the database and updates the data on a
-        player(JID) from game results.
-        Return the created Game object, or None if the creation failed
-        for any reason.
+        Add a game to the database and update the data on a
+        player from game results.
 
-        Side effects:
-        - Inserts a new Game instance into the database.
+        Arguments:
+            game_report (dict): a report about a game
+
+        Returns:
+            Game object for the created game or None if the creation
+            failed for any reason.
+
         """
         # Discard any games still in progress.
         if any(map(lambda state: state == 'active', dict.values(game_report['playerStates']))):
@@ -175,18 +200,26 @@ class LeaderboardList(object):
         self.db.commit()
         return game
 
-    def verify_game(self, game_report):
+    @staticmethod
+    def verify_game(game_report):
         """Check whether or not the game should be rated.
 
-        Return a boolean based on whether the game should be rated.
-        Here, we can specify the criteria for rated games.
+        The criteria for rated games can be specified here.
+
+        Arguments:
+            game_report (dict): a report about a game
+
+        Returns:
+            True if the game should be rated, false otherwise.
+
         """
         winning_jids = list(dict.keys({jid: state for jid, state in
                                        game_report['playerStates'].items()
                                        if state == 'won'}))
-        # We only support 1v1s right now. TODO: Support team games.
+        # We only support 1v1s right now.
         if len(winning_jids) * 2 > len(dict.keys(game_report['playerStates'])):
-            # More than half the people have won. This is not a balanced team game or duel.
+            # More than half the people have won. This is not a
+            # balanced team game or duel.
             return False
         if len(dict.keys(game_report['playerStates'])) != 2:
             return False
@@ -198,15 +231,15 @@ class LeaderboardList(object):
         Take a game with 2 players and alters their ratings based on
         the result of the game.
 
-        Returns self.
+        Adjusts the players ratings in the database.
 
-        Side effects:
-        - Changes the game's players' ratings in the database.
+        Arguments:
+            game (Game): game to rate
         """
         player1 = game.players[0]
         player2 = game.players[1]
-        # TODO: Support draws. Since it's impossible to draw in the game currently,
-        # the database model, and therefore this code, requires a winner.
+        # Since it's impossible to draw in the game currently, the
+        # database model, and therefore this code, requires a winner.
         # The Elo implementation does not, however.
         result = 1 if player1 == game.winner else -1
         # Player's ratings are -1 unless they have played a rated game.
@@ -246,21 +279,29 @@ class LeaderboardList(object):
         if player2.rating > player2.highest_rating:
             player2.highest_rating = player2.rating
         self.db.commit()
-        return self
 
     def get_last_rated_message(self):
         """Get the string of the last rated game.
 
         Triggers an update chat for the bot.
+
+        Returns:
+            str with the a message about a rated game
+
         """
         return self.last_rated
 
     def add_and_rate_game(self, game_report):
-        """Call addGame
+        """Add and rate a game.
 
-        If the game has only two players, also calls rateGame.
+        If the game has only two players, rate the game.
 
-        Returns the result of addGame.
+        Arguments:
+            game_report (dict): a report about a game
+
+        Returns:
+             Game object
+
         """
         game = self.add_game(game_report)
         if game and self.verify_game(game_report):
@@ -270,7 +311,12 @@ class LeaderboardList(object):
         return game
 
     def get_board(self):
-        """Returns a dictionary of player rankings to JIDs for sending."""
+        """Return a mapping between player ratings and JIDs.
+
+        Returns:
+            dict with player JIDs and ratings
+
+        """
         board = {}
         players = self.db.query(Player).filter(Player.rating != -1) \
             .order_by(Player.rating.desc()).limit(100).all()
@@ -280,10 +326,17 @@ class LeaderboardList(object):
         return board
 
     def get_rating_list(self, nicks):
-        """Return a rating list of players currently in the lobby
+        """Return a mapping between online player ratings and JIDs.
 
-        The returned list is by nick because the client can't link JID
-        to nick conveniently.
+        The returned dictionary is by nick because the client can't
+        link JID to nick conveniently.
+
+        Arguments:
+            nicks (dict): Players currently online
+
+        Returns:
+            dict with player nicks and ratings
+
         """
         ratings = {}
         player_filter = sqlalchemy.func.upper(Player.jid).in_(
@@ -301,18 +354,32 @@ class LeaderboardList(object):
 class ReportManager(object):
     """Class which manages different game reports from clients.
 
-    Also calls leaderboard functions as appropriate.
+    Calls leaderboard functions as appropriate.
     """
 
     def __init__(self, leaderboard):
+        """Initialize the report manager.
+
+        Arguments:
+            leaderboard (LeaderboardList): Leaderboard the manager is
+                                           for
+
+        """
         self.leaderboard = leaderboard
         self.interim_report_tracker = []
         self.interim_jid_tracker = []
 
     def add_report(self, jid, raw_game_report):
-        """Add a game to the interface between a raw report and the leaderboard database."""
-        # cleanRawGameReport is a copy of rawGameReport with all reporter specific information
-        # removed.
+        """Add a game to the interface between a raw report and the leaderboard database.
+
+        Arguments:
+            jid (?): ?
+            raw_game_report (?): ?
+
+        """
+        # clean_raw_game_report is a copy of raw_game_report with all
+        # reporter specific information removed, so multiple reports
+        # from different reporters should be identical.
         clean_raw_game_report = raw_game_report.copy()
         del clean_raw_game_report["playerID"]
 
@@ -326,9 +393,11 @@ class ReportManager(object):
                 jids[int(raw_game_report["playerID"]) - 1] = str(jid).lower()
             self.interim_jid_tracker.append(jids)
         else:
-            # We get the index at which the JIDs coresponding to the game are stored.
+            # We get the index at which the JIDs corresponding to the
+            # game are stored.
             index = self.interim_report_tracker.index(clean_raw_game_report)
-            # We insert the new report JID into the ascending list of JIDs for the game.
+            # We insert the new report JID into the ascending list of
+            # JIDs for the game.
             jids = self.interim_jid_tracker[index]
             if len(jids) - int(raw_game_report["playerID"]) > -1:
                 jids[int(raw_game_report["playerID"]) - 1] = str(jid).lower()
@@ -361,10 +430,10 @@ class ReportManager(object):
     def check_full(self):
         """Check if enough reports are present to add game to the leaderboard.
 
-        Searches internal database to check if enough reports have
-        been submitted to add a game to the leaderboard. If so, the
-        report will be interpolated and addAndRateGame will be called
-        with the result.
+        Searches internal database to check if all players who attended
+        a game, have provided reports about it. If so, the report will
+        be interpolated and rating of the game will be triggered with
+        the result.
         """
         i = 0
         length = len(self.interim_report_tracker)
@@ -392,12 +461,19 @@ class ReportManager(object):
     def get_num_players(raw_game_report):
         """Compute the number of players in a raw gameReport.
 
-        Returns int, the number of players.
+        Arguments:
+            raw_game_report (?): ?
+
+        Returns:
+             int with the number of players in the game
+
         """
-        # Find a key in the report which holds values for multiple players.
+        # Find a key in the report which holds values for multiple
+        # players.
         for key in raw_game_report:
             if raw_game_report[key].find(",") != -1:
-                # Count the number of values, minus one for the false split positive.
+                # Count the number of values, minus one for the false
+                # split positive.
                 return len(raw_game_report[key].split(",")) - 1
         # Return -1 in case of failure.
         return -1
@@ -413,6 +489,11 @@ class PlayerXmppPlugin(ElementBase):
     plugin_attrib = 'player'
 
     def add_player_online(self, player):
+        """Add a player to the extension.
+
+        Arguments:
+            player (str): JID of the player to add
+        """
         self.xml.append(ET.fromstring("<player>%s</player>" % player))
 
 
@@ -420,18 +501,16 @@ class EcheLOn(sleekxmpp.ClientXMPP):
     """Main class which handles IQ data and sends new data."""
 
     def __init__(self, sjid, password, room, nick):
+        """Initialize EcheLOn."""
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
         self.sjid = sjid
         self.room = room
         self.nick = nick
 
-        # Init leaderboard object
         self.leaderboard = LeaderboardList()
-
-        # gameReport to leaderboard abstraction
         self.report_manager = ReportManager(self.leaderboard)
-
-        # Store mapping of nicks and XmppIDs, attached via presence stanza
+        # Store mapping of nicks and JIDs, attached via presence
+        # stanza
         self.nicks = {}
 
         register_stanza_plugin(Iq, PlayerXmppPlugin)
@@ -439,13 +518,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'), self.iqhandler,
+        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'), self.iq_handler,
                                        instream=True))
-        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'), self.iqhandler,
+        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'), self.iq_handler,
                                        instream=True))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
-                                       self.iqhandler, instream=True))
-        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'), self.iqhandler,
+                                       self.iq_handler, instream=True))
+        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'), self.iq_handler,
                                        instream=True))
 
         self.add_event_handler("session_start", self.start)
@@ -453,14 +532,24 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.add_event_handler("muc::%s::got_offline" % self.room, self.muc_offline)
 
     def start(self, event):  # pylint: disable=unused-argument
-        """Join MUC channel and announce presence."""
+        """Join MUC channel and announce presence.
+
+        Arguments:
+            event (?): ?
+
+        """
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
         self.send_presence()
         self.get_roster()
         logging.info("EcheLOn started")
 
     def muc_online(self, presence):
-        """Add joining players to the list of players."""
+        """Add joining players to the list of players.
+
+        Arguments:
+            presence (?): ?
+
+        """
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
@@ -470,7 +559,12 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
     def muc_offline(self, presence):
-        """Remove leaving players from the list of players."""
+        """Remove leaving players from the list of players.
+
+        Arguments:
+            presence (?): ?
+
+        """
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
@@ -478,10 +572,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             if jid in self.nicks:
                 del self.nicks[jid]
 
-    def iqhandler(self, iq):
+    def iq_handler(self, iq):
         """Handle the custom stanzas.
 
-        This method should be very robust because we could receive anything
+        This method should be very robust because we could receive
+        anything.
+
+        Arguments:
+            iq (?): ?
+
         """
         if iq['type'] == 'error':
             logging.error('iqhandler error %s', iq['error']['condition'])
@@ -545,16 +644,21 @@ class EcheLOn(sleekxmpp.ClientXMPP):
     def send_board_list(self, to, recipient):
         """Send the whole leaderboard list.
 
-        If no target is passed the boardlist is broadcasted
+        If no target is passed the board list is broadcasted
         to all clients.
+
+        Arguments:
+            to (sleekxmpp.xmlstream.jid.JID): sender of the board list
+                                              request (can be player or
+                                              XpartaMuPP)
+            recipient (str): Player who requested the board list
         """
-        # Pull leaderboard data and add it to the stanza
         board = self.leaderboard.get_board()
 
         iq = self.make_iq_result(ito=to)
         stanza = BoardListXmppPlugin()
-        for i in board:
-            stanza.add_item(board[i]['name'], board[i]['rating'])
+        for value in board.values():
+            stanza.add_item(value['name'], value['rating'])
         stanza.add_command('boardlist')
         stanza.add_recipient(recipient)
         iq.set_payload(stanza)
@@ -569,19 +673,24 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.error("Failed to send leaderboard list")
 
     def send_rating_list(self, to):
-        """Send the rating list."""
-        # Pull rating list data and add it to the stanza
-        ratinglist = self.leaderboard.get_rating_list(self.nicks)
+        """Send the rating list.
+
+        Arguments:
+            to (sleekxmpp.xmlstream.jid.JID): player who should receive
+                                              the rating list
+
+        """
+        rating_list = self.leaderboard.get_rating_list(self.nicks)
 
         iq = self.make_iq_result(ito=to)
         stanza = BoardListXmppPlugin()
-        for i in ratinglist:
-            stanza.add_item(ratinglist[i]['name'], ratinglist[i]['rating'])
+        for values in rating_list.values():
+            stanza.add_item(values['name'], values['rating'])
         stanza.add_command('ratinglist')
         iq.set_payload(stanza)
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XMPP ID '%s' known to send ratinglist to", str(to))
+            logging.error("No player with the XMPP ID '%s' known to send rating list to", str(to))
             return
 
         try:
@@ -590,15 +699,22 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.error("Failed to send rating list")
 
     def send_profile(self, to, player, recipient):
-        """Send the player profile to a specified target."""
+        """Send the player profile to a specified target.
+
+        Arguments:
+            to (sleekxmpp.xmlstream.jid.JID): player who requested the
+                                              profile
+            player (?): ?
+            recipient (?): ?
+
+        """
         if not to:
             logging.error("Failed to send profile")
             return
 
         online = False
-        # Pull stats and add it to the stanza
-        for jid in list(self.nicks):
-            if self.nicks[jid] == player:
+        for jid, nick in self.nicks.items():
+            if nick == player:
                 stats = self.leaderboard.get_profile(jid)
                 online = True
                 break
@@ -626,7 +742,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.error("Failed to send profile")
 
     def send_profile_not_found(self, to, player, recipient):
-        """Send a profile not-found error to a specified target."""
+        """Send a profile not-found error to a specified target.
+
+        Arguments:
+            to (sleekxmpp.xmlstream.jid.JID): player who requested the
+                                              profile
+            player (?): ?
+            recipient (?): ?
+
+        """
         iq = self.make_iq_result(ito=to)
         stanza = ProfileXmppPlugin()
         stanza.add_item(player, str(-2))
