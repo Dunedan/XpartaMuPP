@@ -42,11 +42,11 @@ class Games(object):
         data['players-init'] = data['players']
         data['nbp-init'] = data['nbp']
         data['state'] = 'init'
-        self.games[str(jid)] = data
+        self.games[jid] = data
 
     def remove_game(self, jid):
         """Remove a game attached to a JID."""
-        del self.games[str(jid)]
+        del self.games[jid]
 
     def get_all_games(self):
         """Return all games."""
@@ -54,7 +54,6 @@ class Games(object):
 
     def change_game_state(self, jid, data):
         """Switch game state between running and waiting."""
-        jid = str(jid)
         if jid in self.games:
             if self.games[jid]['nbp-init'] > data['nbp']:
                 logging.debug("change game (%s) state from %s to %s", jid,
@@ -121,7 +120,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.add_event_handler("muc::%s::got_offline" % self.room, self.muc_offline)
         self.add_event_handler("groupchat_message", self.muc_message)
 
-    def start(self, event):
+    def start(self, event):  # pylint: disable=unused-argument
         """Join MUC channel and announce presence."""
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
         self.send_presence()
@@ -217,7 +216,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 if command == 'register':
                     # Add game
                     try:
-                        self.games.add_game(iq['from'], iq['gamelist']['game'])
+                        self.games.add_game(str(iq['from']), iq['gamelist']['game'])
                         self.send_game_list()
                     except:
                         traceback.print_exc()
@@ -225,7 +224,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 elif command == 'unregister':
                     # Remove game
                     try:
-                        self.games.remove_game(iq['from'])
+                        self.games.remove_game(str(iq['from']))
                         self.send_game_list()
                     except:
                         traceback.print_exc()
@@ -234,7 +233,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 elif command == 'changestate':
                     # Change game status (waiting/running)
                     try:
-                        self.games.change_game_state(iq['from'], iq['gamelist']['game'])
+                        self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
                         self.send_game_list()
                     except:
                         traceback.print_exc()
@@ -408,7 +407,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             except:
                 logging.error("Failed to send leaderboard list")
 
-    def relay_profile(self, data, player, to):
+    def relay_profile(self, data, player, to):  # pylint: disable=unused-argument
         """Send the player profile to a specified target."""
         if not to:
             logging.error("Failed to send profile, target unspecified")

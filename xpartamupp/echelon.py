@@ -336,7 +336,8 @@ class ReportManager(object):
 
         self.check_full()
 
-    def expand_report(self, raw_game_report, jids):
+    @staticmethod
+    def expand_report(raw_game_report, jids):
         """Re-formats a raw game into Python data structures.
 
         JIDs are left empty.
@@ -387,7 +388,8 @@ class ReportManager(object):
                 i += 1
                 self.leaderboard.last_rated = ""
 
-    def get_num_players(self, raw_game_report):
+    @staticmethod
+    def get_num_players(raw_game_report):
         """Compute the number of players in a raw gameReport.
 
         Returns int, the number of players.
@@ -450,7 +452,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.add_event_handler("muc::%s::got_online" % self.room, self.muc_online)
         self.add_event_handler("muc::%s::got_offline" % self.room, self.muc_offline)
 
-    def start(self, event):
+    def start(self, event):  # pylint: disable=unused-argument
         """Join MUC channel and announce presence."""
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
         self.send_presence()
