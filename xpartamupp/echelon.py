@@ -58,18 +58,18 @@ class LeaderboardList(object):
             return
 
         if player.rating != -1:
-            stats['rating'] = str(player.rating)
+            stats['rating'] = player.rating
             rank = self.db.query(Player).filter(Player.rating >= player.rating).count()
-            stats['rank'] = str(rank)
+            stats['rank'] = rank
 
         if player.highest_rating != -1:
-            stats['highestRating'] = str(player.highest_rating)
+            stats['highestRating'] = player.highest_rating
 
-        games_played = self.db.query(PlayerInfo).filter_by(player_id=(player.id)).count()
-        wins = self.db.query(Game).filter_by(winner_id=(player.id)).count()
-        stats['totalGamesPlayed'] = str(games_played)
-        stats['wins'] = str(wins)
-        stats['losses'] = str(games_played - wins)
+        games_played = self.db.query(PlayerInfo).filter_by(player_id=player.id).count()
+        wins = self.db.query(Game).filter_by(winner_id=player.id).count()
+        stats['totalGamesPlayed'] = games_played
+        stats['wins'] = wins
+        stats['losses'] = games_played - wins
         return stats
 
     def get_or_create_player(self, jid):
@@ -608,8 +608,9 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         iq = self.make_iq_result(ito=to)
         stanza = ProfileXmppPlugin()
-        stanza.add_item(player, stats['rating'], stats['highestRating'], stats['rank'],
-                        stats['totalGamesPlayed'], stats['wins'], stats['losses'])
+        stanza.add_item(player, str(stats['rating']), str(stats['highestRating']),
+                        str(stats['rank']), str(stats['totalGamesPlayed']), str(stats['wins']),
+                        str(stats['losses']))
         stanza.add_command(player)
         stanza.add_recipient(recipient)
         iq.set_payload(stanza)
