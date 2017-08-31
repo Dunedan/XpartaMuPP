@@ -14,14 +14,11 @@ pylint:
     max-args: 6
     max-line-length: 99
   disable:
-    - C1001
     - C0111
     - C0103
     - F0401
-    - R0912
     - R0913
     - R0914
-    - R0915
     - W0703
 
 pep257:
