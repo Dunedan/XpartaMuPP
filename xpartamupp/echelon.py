@@ -18,7 +18,6 @@
 
 import argparse
 import logging
-import traceback
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -448,8 +447,8 @@ class ReportManager(object):
                     self.leaderboard.add_and_rate_game(
                         self.expand_report(self.interim_report_tracker[i],
                                            self.interim_jid_tracker[i]))
-                except:
-                    traceback.print_exc()
+                except Exception:
+                    logging.exception("Failed to add and rate a game.")
                 del self.interim_jid_tracker[i]
                 del self.interim_report_tracker[i]
                 length -= 1
@@ -669,7 +668,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
+        except Exception:
             logging.error("Failed to send leaderboard list")
 
     def send_rating_list(self, to):
@@ -695,8 +694,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            logging.error("Failed to send rating list")
+        except Exception:
+            logging.exception("Failed to send rating list")
 
     def send_profile(self, to, player, recipient):
         """Send the player profile to a specified target.
@@ -737,9 +736,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            traceback.print_exc()
-            logging.error("Failed to send profile")
+        except Exception:
+            logging.exception("Failed to send profile")
 
     def send_profile_not_found(self, to, player, recipient):
         """Send a profile not-found error to a specified target.
@@ -764,9 +762,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            traceback.print_exc()
-            logging.error("Failed to send profile")
+        except Exception:
+            logging.exception("Failed to send profile")
 
 
 def main():

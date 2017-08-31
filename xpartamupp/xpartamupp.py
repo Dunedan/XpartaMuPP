@@ -19,7 +19,6 @@
 import argparse
 import logging
 import time
-import traceback
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -355,13 +354,13 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
                 try:
                     iq.send(block=False, now=True)
-                except:
-                    logging.error("Failed to send game list")
+                except Exception:
+                    logging.exception("Failed to send game list")
 
                 return
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XmPP ID '%s' known to send gamelist to.",
+            logging.error("No player with the XMPP ID '%s' known to send gamelist to.",
                           str(to))
             return
 
@@ -374,8 +373,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            logging.error("Failed to send game list")
+        except Exception:
+            logging.exception("Failed to send game list")
 
     def relay_board_list_request(self, recipient, player):
         """Send a boardListRequest to EcheLOn.
@@ -398,8 +397,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            logging.error("Failed to send leaderboard list request")
+        except Exception:
+            logging.exception("Failed to send leaderboard list request")
 
     def relay_rating_list_request(self, recipient):
         """Send a ratingListRequest to EcheLOn.
@@ -419,8 +418,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            logging.error("Failed to send rating list request")
+        except Exception:
+            logging.exception("Failed to send rating list request")
 
     def relay_profile_request(self, recipient, player, command):
         """Send a profileRequest to EcheLOn.
@@ -443,8 +442,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            logging.error("Failed to send profile request")
+        except Exception:
+            logging.exception("Failed to send profile request")
 
     def relay_player_online(self, jid):
         """Tells EcheLOn that someone comes online.
@@ -464,8 +463,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            logging.error("Failed to send player muc online")
+        except Exception:
+            logging.exception("Failed to send player muc online")
 
     def relay_game_report(self, data, sender):
         """Relay a game report to EcheLOn."""
@@ -482,8 +481,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            logging.error("Failed to send game report request")
+        except Exception:
+            logging.exception("Failed to send game report request")
 
     def relay_board_list(self, board_list, to=None):
         """Send the whole leaderboard list.
@@ -503,8 +502,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 iq['to'] = jid
                 try:
                     iq.send(block=False, now=True)
-                except:
-                    logging.error("Failed to send rating list")
+                except Exception:
+                    logging.exception("Failed to send rating list")
         else:
             # Leaderboard
             if str(to) not in self.nicks:
@@ -513,8 +512,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 return
             try:
                 iq.send(block=False, now=True)
-            except:
-                logging.error("Failed to send leaderboard list")
+            except Exception:
+                logging.exception("Failed to send leaderboard list")
 
     def relay_profile(self, data, player, to):  # pylint: disable=unused-argument
         """Send the player profile to a specified target."""
@@ -531,9 +530,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         try:
             iq.send(block=False, now=True)
-        except:
-            traceback.print_exc()
-            logging.error("Failed to send profile")
+        except Exception:
+            logging.exception("Failed to send profile")
 
     def warn_ratings_bot_offline(self):
         """Warn if the ratings bot is offline."""
