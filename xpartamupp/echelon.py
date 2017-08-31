@@ -123,7 +123,7 @@ class Leaderboard(object):
 
         return None
 
-    def add_game(self, game_report):
+    def _add_game(self, game_report):
         """Add a game to the database.
 
         Add a game to the database and update the data on a
@@ -200,7 +200,7 @@ class Leaderboard(object):
         return game
 
     @staticmethod
-    def verify_game(game_report):
+    def _verify_game(game_report):
         """Check whether or not the game should be rated.
 
         The criteria for rated games can be specified here.
@@ -224,7 +224,7 @@ class Leaderboard(object):
             return False
         return True
 
-    def rate_game(self, game):
+    def _rate_game(self, game):
         """Update player ratings based on game outcome.
 
         Take a game with 2 players and alters their ratings based on
@@ -302,9 +302,9 @@ class Leaderboard(object):
              Game object
 
         """
-        game = self.add_game(game_report)
-        if game and self.verify_game(game_report):
-            self.rate_game(game)
+        game = self._add_game(game_report)
+        if game and self._verify_game(game_report):
+            self._rate_game(game)
         else:
             self.last_rated = ""
         return game
@@ -385,7 +385,7 @@ class ReportManager(object):
             # Store the game.
             self.interim_report_tracker.append(clean_raw_game_report)
             # Initialize the JIDs and store the initial JID.
-            num_players = self.get_num_players(raw_game_report)
+            num_players = self._get_num_players(raw_game_report)
             jids = [None] * num_players
             if num_players - int(raw_game_report["playerID"]) > -1:
                 jids[int(raw_game_report["playerID"]) - 1] = str(jid).lower()
@@ -401,10 +401,10 @@ class ReportManager(object):
                 jids[int(raw_game_report["playerID"]) - 1] = str(jid).lower()
             self.interim_jid_tracker[index] = jids
 
-        self.check_full()
+        self._check_full()
 
     @staticmethod
-    def expand_report(raw_game_report, jids):
+    def _expand_report(raw_game_report, jids):
         """Re-formats a raw game into Python data structures.
 
         JIDs are left empty.
@@ -425,7 +425,7 @@ class ReportManager(object):
                 processed_game_report[key] = stat_to_jid
         return processed_game_report
 
-    def check_full(self):
+    def _check_full(self):
         """Check if enough reports are present to add game to the leaderboard.
 
         Searches internal database to check if all players who attended
@@ -436,7 +436,7 @@ class ReportManager(object):
         i = 0
         length = len(self.interim_report_tracker)
         while i < length:
-            num_players = self.get_num_players(self.interim_report_tracker[i])
+            num_players = self._get_num_players(self.interim_report_tracker[i])
             num_reports = 0
             for jid in self.interim_jid_tracker[i]:
                 if jid is not None:
@@ -444,8 +444,8 @@ class ReportManager(object):
             if num_reports == num_players:
                 try:
                     self.leaderboard.add_and_rate_game(
-                        self.expand_report(self.interim_report_tracker[i],
-                                           self.interim_jid_tracker[i]))
+                        self._expand_report(self.interim_report_tracker[i],
+                                            self.interim_jid_tracker[i]))
                 except Exception:
                     logging.exception("Failed to add and rate a game.")
                 del self.interim_jid_tracker[i]
@@ -456,7 +456,7 @@ class ReportManager(object):
                 self.leaderboard.last_rated = ""
 
     @staticmethod
-    def get_num_players(raw_game_report):
+    def _get_num_players(raw_game_report):
         """Compute the number of players in a raw gameReport.
 
         Arguments:
@@ -498,19 +498,19 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
         self.register_handler(Callback('Iq Player', StanzaPath('iq/player'),
-                                       self.iq_player_handler, instream=True))
+                                       self._iq_player_handler, instream=True))
         self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'),
-                                       self.iq_board_list_handler, instream=True))
+                                       self._iq_board_list_handler, instream=True))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
-                                       self.iq_game_report_handler, instream=True))
+                                       self._iq_game_report_handler, instream=True))
         self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'),
-                                       self.iq_profile_handler, instream=True))
+                                       self._iq_profile_handler, instream=True))
 
-        self.add_event_handler("session_start", self.start)
-        self.add_event_handler("muc::%s::got_online" % self.room, self.muc_online)
-        self.add_event_handler("muc::%s::got_offline" % self.room, self.muc_offline)
+        self.add_event_handler("session_start", self._session_start)
+        self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
+        self.add_event_handler("muc::%s::got_offline" % self.room, self._muc_offline)
 
-    def start(self, event):  # pylint: disable=unused-argument
+    def _session_start(self, event):  # pylint: disable=unused-argument
         """Join MUC channel and announce presence.
 
         Arguments:
@@ -522,7 +522,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.get_roster()
         logging.info("EcheLOn started")
 
-    def muc_online(self, presence):
+    def _muc_online(self, presence):
         """Add joining players to the list of players.
 
         Arguments:
@@ -537,7 +537,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                 self.nicks[jid] = nick
             logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
-    def muc_offline(self, presence):
+    def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
 
         Arguments:
@@ -551,7 +551,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             if jid in self.nicks:
                 del self.nicks[jid]
 
-    def iq_player_handler(self, iq):
+    def _iq_player_handler(self, iq):
         """Handle new clients announcing themselves as online."""
         if iq['type'] == 'set' and 'player' in iq.plugins:
             player = iq['player']['online']
@@ -561,7 +561,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s",
                         iq['type'], iq['from'].bare)
 
-    def iq_board_list_handler(self, iq):
+    def _iq_board_list_handler(self, iq):
         """Handle incoming leaderboard list requests."""
         if iq['type'] == 'get' and 'boardlist' in iq.plugins:
             command = iq['boardlist']['command']
@@ -569,14 +569,14 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             if command == 'getleaderboard':
                 try:
                     self.leaderboard.get_or_create_player(iq['from'])
-                    self.send_leaderboard(iq['from'], recipient)
+                    self._send_leaderboard(iq['from'], recipient)
                 except Exception:
                     logging.exception("Failed to process get leaderboard request from %s",
                                       iq['from'].bare)
                 return
             elif command == 'getratinglist':
                 try:
-                    self.send_rating_list(iq['from'])
+                    self._send_rating_list(iq['from'])
                 except Exception:
                     logging.exception("Failed to send the rating list to %s", iq['from'])
                 return
@@ -584,7 +584,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def iq_game_report_handler(self, iq):
+    def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients."""
         if iq['type'] == 'set' and 'gamereport' in iq.plugins:
             try:
@@ -594,7 +594,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                     self.send_message(mto=self.room,
                                       mbody=self.leaderboard.get_last_rated_message(),
                                       mtype="groupchat", mnick=self.nick)
-                    self.send_rating_list(iq['from'])
+                    self._send_rating_list(iq['from'])
             except Exception:
                 logging.exception("Failed to update game statistics for %s", iq['from'].bare)
             return
@@ -602,13 +602,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def iq_profile_handler(self, iq):
+    def _iq_profile_handler(self, iq):
         """Handle profile requests from clients."""
         if iq['type'] == 'get' and 'profile' in iq.plugins:
             command = iq['profile']['command']
             recipient = iq['profile']['recipient']
             try:
-                self.send_profile(iq['from'], command, recipient)
+                self._send_profile(iq['from'], command, recipient)
             except Exception:
                 logging.exception("Failed to send profile about %s to %s", command, recipient)
             return
@@ -616,7 +616,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def send_leaderboard(self, to, recipient):
+    def _send_leaderboard(self, to, recipient):
         """Send the whole leaderboard.
 
         If no target is passed the leaderboard is broadcasted to all
@@ -647,7 +647,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send leaderboard")
 
-    def send_rating_list(self, to):
+    def _send_rating_list(self, to):
         """Send the rating list.
 
         Arguments:
@@ -673,7 +673,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send rating list")
 
-    def send_profile(self, to, player_nick, recipient):
+    def _send_profile(self, to, player_nick, recipient):
         """Send the player profile to a specified target.
 
         Arguments:

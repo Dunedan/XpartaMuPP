@@ -126,20 +126,20 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
         self.register_handler(Callback('Iq Gamelist', StanzaPath('iq/gamelist'),
-                                       self.iq_game_list_handler, instream=True))
+                                       self._iq_game_list_handler, instream=True))
         self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'),
-                                       self.iq_board_list_handler, instream=True))
+                                       self._iq_board_list_handler, instream=True))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
-                                       self.iq_game_report_handler, instream=True))
+                                       self._iq_game_report_handler, instream=True))
         self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'),
-                                       self.iq_profile_handler, instream=True))
+                                       self._iq_profile_handler, instream=True))
 
-        self.add_event_handler("session_start", self.start)
-        self.add_event_handler("muc::%s::got_online" % self.room, self.muc_online)
-        self.add_event_handler("muc::%s::got_offline" % self.room, self.muc_offline)
-        self.add_event_handler("groupchat_message", self.muc_message)
+        self.add_event_handler("session_start", self._session_start)
+        self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
+        self.add_event_handler("muc::%s::got_offline" % self.room, self._muc_offline)
+        self.add_event_handler("groupchat_message", self._muc_message)
 
-    def start(self, event):  # pylint: disable=unused-argument
+    def _session_start(self, event):  # pylint: disable=unused-argument
         """Join MUC channel and announce presence.
 
         Arguments:
@@ -151,7 +151,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.get_roster()
         logging.info("XpartaMuPP started")
 
-    def muc_online(self, presence):
+    def _muc_online(self, presence):
         """Add joining players to the list of players.
 
         Arguments:
@@ -162,18 +162,18 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         jid = str(presence['muc']['jid'])
 
         if self.ratings_bot in self.nicks:
-            self.relay_rating_list_request(self.ratings_bot)
+            self._relay_rating_list_request(self.ratings_bot)
 
-        self.relay_player_online(jid)
+        self._relay_player_online(jid)
         if nick != self.nick:
             if jid not in self.nicks:
                 self.nicks[jid] = nick
 
             # Send game list to new player.
-            self.send_game_list(presence['muc']['jid'])
+            self._send_game_list(presence['muc']['jid'])
             logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
 
-    def muc_offline(self, presence):
+    def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
 
         Arguments:
@@ -188,7 +188,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             for game_jid in self.games.get_all_games():
                 if game_jid == jid:
                     self.games.remove_game(game_jid)
-                    self.send_game_list()
+                    self._send_game_list()
                     break
 
             if jid in self.nicks:
@@ -199,7 +199,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if nick == self.ratings_bot:
             self.ratings_bot_warned = False
 
-    def muc_message(self, msg):
+    def _muc_message(self, msg):
         """Process messages in the MUC room.
 
         Respond to messages highlighting the bots name with an
@@ -214,7 +214,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                                     "participate in any games.",
                               mtype='groupchat')
 
-    def iq_game_list_handler(self, iq):
+    def _iq_game_list_handler(self, iq):
         """Handle game state change requests."""
         if iq['type'] == 'set' and 'gamelist' in iq.plugins:
             command = iq['gamelist']['command']
@@ -222,7 +222,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 # Add game
                 try:
                     self.games.add_game(str(iq['from']), iq['gamelist']['game'])
-                    self.send_game_list()
+                    self._send_game_list()
                 except Exception:
                     logging.exception("Failed to process game registration data")
                 return
@@ -230,7 +230,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 # Remove game
                 try:
                     self.games.remove_game(str(iq['from']))
-                    self.send_game_list()
+                    self._send_game_list()
                 except Exception:
                     logging.exception("Failed to process game unregistration data")
                 return
@@ -238,7 +238,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 # Change game status (waiting/running)
                 try:
                     self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
-                    self.send_game_list()
+                    self._send_game_list()
                 except Exception:
                     logging.exception("Failed to process changestate data")
                 return
@@ -246,7 +246,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s",
                         iq['type'], iq['from'].bare)
 
-    def iq_board_list_handler(self, iq):
+    def _iq_board_list_handler(self, iq):
         """Handle board list requests and responses.
 
         Depreciated once muc_online can send lists/register
@@ -255,7 +255,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if iq['type'] == 'get':
             if 'boardlist' in iq.plugins:
                 try:
-                    self.relay_board_list_request(self.ratings_bot, iq['from'])
+                    self._relay_board_list_request(self.ratings_bot, iq['from'])
                 except Exception:
                     logging.exception("Failed to relay the get leaderboard request from %s to the "
                                       "ratings bot", iq['from'].bare)
@@ -263,17 +263,17 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         elif iq['type'] == 'result':
             if 'boardlist' in iq.plugins:
                 recipient = iq['boardlist']['recipient']
-                self.relay_board_list(iq['boardlist'], recipient)
+                self._relay_board_list(iq['boardlist'], recipient)
             return
 
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def iq_game_report_handler(self, iq):
+    def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients."""
         if iq['type'] == 'set' and 'gamereport' in iq.plugins:
             try:
-                self.relay_game_report(iq['gamereport'], iq['from'])
+                self._relay_game_report(iq['gamereport'], iq['from'])
             except Exception:
                 logging.exception("Failed to relay game report from %s to the ratings bot",
                                   iq['from'].bare)
@@ -282,7 +282,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def iq_profile_handler(self, iq):
+    def _iq_profile_handler(self, iq):
         """Handle profile requests and responses.
 
         Depreciated once muc_online can send lists/register
@@ -291,8 +291,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if iq['type'] == 'get':
             if 'profile' in iq.plugins:
                 try:
-                    self.relay_profile_request(self.ratings_bot, iq['from'],
-                                               iq['profile']['command'])
+                    self._relay_profile_request(self.ratings_bot, iq['from'],
+                                                iq['profile']['command'])
                 except Exception:
                     logging.exception("Failed to relay profile request from %s to the ratings bot",
                                       iq['from'].bare)
@@ -302,7 +302,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 recipient = iq['profile']['recipient']
                 player = iq['profile']['command']
                 try:
-                    self.relay_profile(iq['profile'], player, recipient)
+                    self._relay_profile(iq['profile'], player, recipient)
                 except Exception:
                     logging.exception("Failed to relay profile response from the ratings bot to "
                                       "%s", recipient)
@@ -311,7 +311,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def send_game_list(self, to=None):
+    def _send_game_list(self, to=None):
         """Send a massive stanza with the whole game list.
 
         If no target is passed the gamelist is broadcasted to all
@@ -357,7 +357,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send game list")
 
-    def relay_board_list_request(self, recipient, player):
+    def _relay_board_list_request(self, recipient, player):
         """Send a boardListRequest to EcheLOn.
 
         Arguments:
@@ -367,7 +367,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         """
         if recipient not in self.nicks:
-            self.warn_ratings_bot_offline()
+            self._warn_ratings_bot_offline()
             return
 
         iq = self.make_iq_get(ito=recipient)
@@ -381,7 +381,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send get leaderboard request")
 
-    def relay_rating_list_request(self, recipient):
+    def _relay_rating_list_request(self, recipient):
         """Send a ratingListRequest to EcheLOn.
 
         Arguments:
@@ -389,7 +389,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         """
         if recipient not in self.nicks:
-            self.warn_ratings_bot_offline()
+            self._warn_ratings_bot_offline()
             return
 
         iq = self.make_iq_get(ito=recipient)
@@ -402,7 +402,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send rating list request")
 
-    def relay_profile_request(self, recipient, player, command):
+    def _relay_profile_request(self, recipient, player, command):
         """Send a profileRequest to EcheLOn.
 
         Arguments:
@@ -412,7 +412,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         """
         if recipient not in self.nicks:
-            self.warn_ratings_bot_offline()
+            self._warn_ratings_bot_offline()
             return
 
         iq = self.make_iq_get(ito=recipient)
@@ -426,7 +426,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send profile request")
 
-    def relay_player_online(self, jid):
+    def _relay_player_online(self, jid):
         """Tells EcheLOn that someone comes online.
 
         Arguments:
@@ -447,11 +447,11 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send player muc online")
 
-    def relay_game_report(self, data, sender):
+    def _relay_game_report(self, data, sender):
         """Relay a game report to EcheLOn."""
         to = self.ratings_bot
         if to not in self.nicks:
-            self.warn_ratings_bot_offline()
+            self._warn_ratings_bot_offline()
             return
 
         iq = self.make_iq_set(ito=to)
@@ -465,7 +465,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send game report request")
 
-    def relay_board_list(self, board_list, to=None):
+    def _relay_board_list(self, board_list, to=None):
         """Send the whole leaderboard.
 
         If no target is passed the leaderboard is broadcasted to all
@@ -496,7 +496,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             except Exception:
                 logging.exception("Failed to send leaderboard")
 
-    def relay_profile(self, data, player, to):  # pylint: disable=unused-argument
+    def _relay_profile(self, data, player, to):  # pylint: disable=unused-argument
         """Send the player profile to a specified target."""
         if not to:
             logging.error("Failed to send profile, target unspecified")
@@ -514,7 +514,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send profile")
 
-    def warn_ratings_bot_offline(self):
+    def _warn_ratings_bot_offline(self):
         """Warn if the ratings bot is offline."""
         if not self.ratings_bot_warned:
             logging.warning("Ratings bot '%s' is offline", str(self.ratings_bot))
