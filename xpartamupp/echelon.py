@@ -37,7 +37,7 @@ from xpartamupp.stanzas import BoardListXmppPlugin, GameReportXmppPlugin, Profil
 LEADERBOARD_DEFAULT_RATING = 1200
 
 
-class LeaderboardList(object):
+class Leaderboard(object):
     """Class that provides and manages leaderboard data."""
 
     def __init__(self):
@@ -360,8 +360,7 @@ class ReportManager(object):
         """Initialize the report manager.
 
         Arguments:
-            leaderboard (LeaderboardList): Leaderboard the manager is
-                                           for
+            leaderboard (Leaderboard): Leaderboard the manager is for
 
         """
         self.leaderboard = leaderboard
@@ -506,7 +505,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.room = room
         self.nick = nick
 
-        self.leaderboard = LeaderboardList()
+        self.leaderboard = Leaderboard()
         self.report_manager = ReportManager(self.leaderboard)
         # Store mapping of nicks and JIDs, attached via presence
         # stanza
@@ -582,16 +581,16 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                         iq['type'], iq['from'].bare)
 
     def iq_board_list_handler(self, iq):
-        """Handle incoming board list requests."""
+        """Handle incoming leaderboard list requests."""
         if iq['type'] == 'get' and 'boardlist' in iq.plugins:
             command = iq['boardlist']['command']
             recipient = iq['boardlist']['recipient']
             if command == 'getleaderboard':
                 try:
                     self.leaderboard.get_or_create_player(iq['from'])
-                    self.send_board_list(iq['from'], recipient)
+                    self.send_leaderboard(iq['from'], recipient)
                 except Exception:
-                    logging.exception("Failed to process leaderboard list request from %s",
+                    logging.exception("Failed to process get leaderboard request from %s",
                                       iq['from'].bare)
                 return
             elif command == 'getratinglist':
@@ -640,17 +639,17 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def send_board_list(self, to, recipient):
-        """Send the whole leaderboard list.
+    def send_leaderboard(self, to, recipient):
+        """Send the whole leaderboard.
 
-        If no target is passed the board list is broadcasted
-        to all clients.
+        If no target is passed the leaderboard is broadcasted to all
+        clients.
 
         Arguments:
-            to (sleekxmpp.xmlstream.jid.JID): sender of the board list
-                                              request (can be player or
-                                              XpartaMuPP)
-            recipient (str): Player who requested the board list
+            to (sleekxmpp.xmlstream.jid.JID): sender of the get
+                                              leaderboard request (can
+                                              be player or XpartaMuPP)
+            recipient (str): Player who requested the leaderboard
         """
         board = self.leaderboard.get_board()
 
@@ -663,13 +662,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XMPP ID '%s' known to send boardlist to", str(to))
+            logging.error("No player with the XMPP ID '%s' known to send leaderboard to", str(to))
             return
 
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.error("Failed to send leaderboard list")
+            logging.exception("Failed to send leaderboard")
 
     def send_rating_list(self, to):
         """Send the rating list.

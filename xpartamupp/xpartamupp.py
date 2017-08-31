@@ -276,7 +276,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 try:
                     self.relay_board_list_request(self.ratings_bot, iq['from'])
                 except Exception:
-                    logging.exception("Failed to relay leaderboard list request from %s to the "
+                    logging.exception("Failed to relay the get leaderboard request from %s to the "
                                       "ratings bot", iq['from'].bare)
                 return
         elif iq['type'] == 'result':
@@ -398,7 +398,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send leaderboard list request")
+            logging.exception("Failed to send get leaderboard request")
 
     def relay_rating_list_request(self, recipient):
         """Send a ratingListRequest to EcheLOn.
@@ -485,9 +485,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             logging.exception("Failed to send game report request")
 
     def relay_board_list(self, board_list, to=None):
-        """Send the whole leaderboard list.
+        """Send the whole leaderboard.
 
-        If no target is passed the boardlist is broadcasted to all
+        If no target is passed the leaderboard is broadcasted to all
         clients.
         """
         iq = self.make_iq_result(ito=to)
@@ -507,13 +507,13 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         else:
             # Leaderboard
             if str(to) not in self.nicks:
-                logging.error("No player with the XMPP ID '%s' known to send board list to",
+                logging.error("No player with the XMPP ID '%s' known to send leaderboard to",
                               str(to))
                 return
             try:
                 iq.send(block=False, now=True)
             except Exception:
-                logging.exception("Failed to send leaderboard list")
+                logging.exception("Failed to send leaderboard")
 
     def relay_profile(self, data, player, to):  # pylint: disable=unused-argument
         """Send the player profile to a specified target."""
