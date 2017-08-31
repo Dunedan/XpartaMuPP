@@ -144,9 +144,8 @@ class Leaderboard(object):
         players = map(lambda jid: self.db.query(Player).filter(Player.jid.ilike(str(jid))).first(),
                       dict.keys(game_report['playerStates']))
 
-        winning_jid = list(dict.keys({jid: state for jid, state in
-                                      game_report['playerStates'].items()
-                                      if state == 'won'}))[0]
+        winning_jid = [jid for jid, state in game_report['playerStates'].items()
+                       if state == 'won'][0]
 
         # single_stats = {'timeElapsed', 'mapName', 'teamsLocked', 'matchID'}
         total_score_stats = {'economyScore', 'militaryScore', 'totalScore'}
@@ -212,15 +211,10 @@ class Leaderboard(object):
             True if the game should be rated, false otherwise.
 
         """
-        winning_jids = list(dict.keys({jid: state for jid, state in
-                                       game_report['playerStates'].items()
-                                       if state == 'won'}))
+        winning_jids = [jid for jid, state in game_report['playerStates'].items()
+                        if state == 'won']
         # We only support 1v1s right now.
-        if len(winning_jids) * 2 > len(dict.keys(game_report['playerStates'])):
-            # More than half the people have won. This is not a
-            # balanced team game or duel.
-            return False
-        if len(dict.keys(game_report['playerStates'])) != 2:
+        if len(winning_jids) > 1 or len(dict.keys(game_report['playerStates'])) != 2:
             return False
         return True
 
