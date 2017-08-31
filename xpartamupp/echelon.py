@@ -518,14 +518,14 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'), self.iq_handler,
-                                       instream=True))
-        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'), self.iq_handler,
-                                       instream=True))
+        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'),
+                                       self.iq_player_handler, instream=True))
+        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'),
+                                       self.iq_board_list_handler, instream=True))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
-                                       self.iq_handler, instream=True))
-        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'), self.iq_handler,
-                                       instream=True))
+                                       self.iq_game_report_handler, instream=True))
+        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'),
+                                       self.iq_profile_handler, instream=True))
 
         self.add_event_handler("session_start", self.start)
         self.add_event_handler("muc::%s::got_online" % self.room, self.muc_online)
@@ -572,74 +572,74 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             if jid in self.nicks:
                 del self.nicks[jid]
 
-    def iq_handler(self, iq):
-        """Handle the custom stanzas.
+    def iq_player_handler(self, iq):
+        """Handle new clients announcing themselves as online."""
+        if iq['type'] == 'set' and 'player' in iq.plugins:
+            player = iq['player']['online']
+            self.leaderboard.get_or_create_player(player)
+            return
 
-        This method should be very robust because we could receive
-        anything.
+        logging.warning("Failed to process stanza type '%s' received from %s",
+                        iq['type'], iq['from'].bare)
 
-        Arguments:
-            iq (?): ?
-
-        """
-        if iq['type'] == 'error':
-            logging.error('iqhandler error %s', iq['error']['condition'])
-            #self.disconnect()
-        elif iq['type'] == 'get':
-            # Request lists.
-            if 'boardlist' in iq.plugins:
-                command = iq['boardlist']['command']
-                recipient = iq['boardlist']['recipient']
-                if command == 'getleaderboard':
-                    try:
-                        self.leaderboard.get_or_create_player(iq['from'])
-                        self.send_board_list(iq['from'], recipient)
-                    except:
-                        traceback.print_exc()
-                        logging.error("Failed to process leaderboardlist request from %s",
+    def iq_board_list_handler(self, iq):
+        """Handle incoming board list requests."""
+        if iq['type'] == 'get' and 'boardlist' in iq.plugins:
+            command = iq['boardlist']['command']
+            recipient = iq['boardlist']['recipient']
+            if command == 'getleaderboard':
+                try:
+                    self.leaderboard.get_or_create_player(iq['from'])
+                    self.send_board_list(iq['from'], recipient)
+                except Exception:
+                    logging.exception("Failed to process leaderboard list request from %s",
                                       iq['from'].bare)
-                elif command == 'getratinglist':
-                    try:
-                        self.send_rating_list(iq['from'])
-                    except:
-                        traceback.print_exc()
-                else:
-                    logging.error("Failed to process boardlist request from %s", iq['from'].bare)
-            elif 'profile' in iq.plugins:
-                command = iq['profile']['command']
-                recipient = iq['profile']['recipient']
+                return
+            elif command == 'getratinglist':
                 try:
-                    self.send_profile(iq['from'], command, recipient)
-                except:
-                    try:
-                        self.send_profile_not_found(iq['from'], command, recipient)
-                    except:
-                        logging.debug("No record found for %s", command)
-            else:
-                logging.error("Unknown 'get' type stanza request from %s", iq['from'].bare)
-        elif iq['type'] == 'result':
-            # Iq successfully received
-            pass
-        elif iq['type'] == 'set':
-            if 'gamereport' in iq.plugins:
-                # Client is reporting end of game statistics
+                    self.send_rating_list(iq['from'])
+                except Exception:
+                    logging.exception("Failed to send the rating list to %s", iq['from'])
+                return
+
+        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
+                        iq['from'].bare)
+
+    def iq_game_report_handler(self, iq):
+        """Handle end of game reports from clients."""
+        if iq['type'] == 'set' and 'gamereport' in iq.plugins:
+            try:
+                self.report_manager.add_report(iq['gamereport']['sender'],
+                                               iq['gamereport']['game'])
+                if self.leaderboard.get_last_rated_message() != "":
+                    self.send_message(mto=self.room,
+                                      mbody=self.leaderboard.get_last_rated_message(),
+                                      mtype="groupchat", mnick=self.nick)
+                    self.send_rating_list(iq['from'])
+            except Exception:
+                logging.exception("Failed to update game statistics for %s", iq['from'].bare)
+            return
+
+        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
+                        iq['from'].bare)
+
+    def iq_profile_handler(self, iq):
+        """Handle profile requests from clients."""
+        if iq['type'] == 'get' and 'profile' in iq.plugins:
+            command = iq['profile']['command']
+            recipient = iq['profile']['recipient']
+            try:
+                self.send_profile(iq['from'], command, recipient)
+            except Exception:
                 try:
-                    self.report_manager.add_report(iq['gamereport']['sender'],
-                                                   iq['gamereport']['game'])
-                    if self.leaderboard.get_last_rated_message() != "":
-                        self.send_message(mto=self.room,
-                                          mbody=self.leaderboard.get_last_rated_message(),
-                                          mtype="groupchat", mnick=self.nick)
-                        self.send_rating_list(iq['from'])
-                except:
-                    traceback.print_exc()
-                    logging.error("Failed to update game statistics for %s", iq['from'].bare)
-            elif 'player' in iq.plugins:
-                player = iq['player']['online']
-                self.leaderboard.get_or_create_player(player)
-        else:
-            logging.error("Failed to process stanza type '%s' received from %s",
-                          iq['type'], iq['from'].bare)
+                    logging.debug("No profile found for %s", command)
+                    self.send_profile_not_found(iq['from'], command, recipient)
+                except Exception:
+                    logging.exception("Failed to send profile not found message to %s", command)
+            return
+
+        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
+                        iq['from'].bare)
 
     def send_board_list(self, to, recipient):
         """Send the whole leaderboard list.

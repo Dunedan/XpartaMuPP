@@ -23,6 +23,7 @@ pylint:
     - R0914
     - R0915
     - W0702
+    - W0703
 
 pep257:
   disable:

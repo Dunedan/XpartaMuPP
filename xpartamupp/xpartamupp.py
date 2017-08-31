@@ -145,16 +145,14 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'), self.iq_handler,
-                                       instream=True))
-        self.register_handler(Callback('Iq Gamelist', StanzaPath('iq/gamelist'), self.iq_handler,
-                                       instream=True))
-        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'), self.iq_handler,
-                                       instream=True))
+        self.register_handler(Callback('Iq Gamelist', StanzaPath('iq/gamelist'),
+                                       self.iq_game_list_handler, instream=True))
+        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'),
+                                       self.iq_board_list_handler, instream=True))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
-                                       self.iq_handler, instream=True))
-        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'), self.iq_handler,
-                                       instream=True))
+                                       self.iq_game_report_handler, instream=True))
+        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'),
+                                       self.iq_profile_handler, instream=True))
 
         self.add_event_handler("session_start", self.start)
         self.add_event_handler("muc::%s::got_online" % self.room, self.muc_online)
@@ -236,91 +234,102 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                                     "participate in any games.",
                               mtype='groupchat')
 
-    def iq_handler(self, iq):
-        """Handle the custom stanzas.
+    def iq_game_list_handler(self, iq):
+        """Handle game state change requests."""
+        if iq['type'] == 'set' and 'gamelist' in iq.plugins:
+            command = iq['gamelist']['command']
+            if command == 'register':
+                # Add game
+                try:
+                    self.games.add_game(str(iq['from']), iq['gamelist']['game'])
+                    self.send_game_list()
+                except Exception:
+                    logging.exception("Failed to process game registration data")
+                return
+            elif command == 'unregister':
+                # Remove game
+                try:
+                    self.games.remove_game(str(iq['from']))
+                    self.send_game_list()
+                except Exception:
+                    logging.exception("Failed to process game unregistration data")
+                return
+            elif command == 'changestate':
+                # Change game status (waiting/running)
+                try:
+                    self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
+                    self.send_game_list()
+                except Exception:
+                    logging.exception("Failed to process changestate data")
+                return
 
-        This method should be very robust because we could receive
-        anything.
+        logging.warning("Failed to process stanza type '%s' received from %s",
+                        iq['type'], iq['from'].bare)
 
-        Arguments:
-            iq (?): ?
+    def iq_board_list_handler(self, iq):
+        """Handle board list requests and responses.
+
+        Depreciated once muc_online can send lists/register
+        automatically on joining the room.
         """
-        if iq['type'] == 'error':
-            logging.error('iqhandler error %s', iq['error']['condition'])
-            # self.disconnect()
-        elif iq['type'] == 'get':
-            # Request lists.
-            # Send lists/register on leaderboard; depreciated once
-            # muc_online can send lists/register automatically on
-            # joining the room.
+        if iq['type'] == 'get':
             if 'boardlist' in iq.plugins:
                 try:
                     self.relay_board_list_request(self.ratings_bot, iq['from'])
-                except:
-                    traceback.print_exc()
-                    logging.error("Failed to process leaderboardlist request from %s",
-                                  iq['from'].bare)
-            elif 'profile' in iq.plugins:
-                command = iq['profile']['command']
-                try:
-                    self.relay_profile_request(self.ratings_bot, iq['from'], command)
-                except:
-                    pass
-            else:
-                logging.error("Unknown 'get' type stanza request from %s", iq['from'].bare)
+                except Exception:
+                    logging.exception("Failed to relay leaderboard list request from %s to the "
+                                      "ratings bot", iq['from'].bare)
+                return
         elif iq['type'] == 'result':
-            # Iq successfully received
             if 'boardlist' in iq.plugins:
                 recipient = iq['boardlist']['recipient']
                 self.relay_board_list(iq['boardlist'], recipient)
-            elif 'profile' in iq.plugins:
+            return
+
+        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
+                        iq['from'].bare)
+
+    def iq_game_report_handler(self, iq):
+        """Handle end of game reports from clients."""
+        if iq['type'] == 'set' and 'gamereport' in iq.plugins:
+            try:
+                self.relay_game_report(iq['gamereport'], iq['from'])
+            except Exception:
+                logging.exception("Failed to relay game report from %s to the ratings bot",
+                                  iq['from'].bare)
+            return
+
+        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
+                        iq['from'].bare)
+
+    def iq_profile_handler(self, iq):
+        """Handle profile requests and responses.
+
+        Depreciated once muc_online can send lists/register
+        automatically on joining the room.
+        """
+        if iq['type'] == 'get':
+            if 'profile' in iq.plugins:
+                try:
+                    self.relay_profile_request(self.ratings_bot, iq['from'],
+                                               iq['profile']['command'])
+                except Exception:
+                    logging.exception("Failed to relay profile request from %s to the ratings bot",
+                                      iq['from'].bare)
+                return
+        elif iq['type'] == 'result':
+            if 'profile' in iq.plugins:
                 recipient = iq['profile']['recipient']
                 player = iq['profile']['command']
-                self.relay_profile(iq['profile'], player, recipient)
-            else:
-                pass  # TODO error/warn?
-        elif iq['type'] == 'set':
-            if 'gamelist' in iq.plugins:
-                # Register-update / unregister a game
-                command = iq['gamelist']['command']
-                if command == 'register':
-                    # Add game
-                    try:
-                        self.games.add_game(str(iq['from']), iq['gamelist']['game'])
-                        self.send_game_list()
-                    except:
-                        traceback.print_exc()
-                        logging.error("Failed to process game registration data")
-                elif command == 'unregister':
-                    # Remove game
-                    try:
-                        self.games.remove_game(str(iq['from']))
-                        self.send_game_list()
-                    except:
-                        traceback.print_exc()
-                        logging.error("Failed to process game unregistration data")
-
-                elif command == 'changestate':
-                    # Change game status (waiting/running)
-                    try:
-                        self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
-                        self.send_game_list()
-                    except:
-                        traceback.print_exc()
-                        logging.error("Failed to process changestate data")
-                else:
-                    logging.error("Failed to process command '%s' received from %s", command,
-                                  iq['from'].bare)
-            elif 'gamereport' in iq.plugins:
-                # Client is reporting end of game statistics
                 try:
-                    self.relay_game_report(iq['gamereport'], iq['from'])
-                except:
-                    traceback.print_exc()
-                    logging.error("Failed to update game statistics for %s", iq['from'].bare)
-        else:
-            logging.error("Failed to process stanza type '%s' received from %s", iq['type'],
-                          iq['from'].bare)
+                    self.relay_profile(iq['profile'], player, recipient)
+                except Exception:
+                    logging.exception("Failed to relay profile response from the ratings bot to "
+                                      "%s", recipient)
+                return
+
+        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
+                        iq['from'].bare)
 
     def send_game_list(self, to=None):
         """Send a massive stanza with the whole game list.
