@@ -22,12 +22,12 @@ import time
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
-from sleekxmpp.xmlstream import ElementBase, register_stanza_plugin, ET
+from sleekxmpp.xmlstream import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 
 from xpartamupp.stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlugin,
-                                ProfileXmppPlugin)
+                                PlayerXmppPlugin, ProfileXmppPlugin)
 
 
 class Games(object):
@@ -90,25 +90,6 @@ class Games(object):
             self.games[jid]['players'] = data['players']
             if 'startTime' not in self.games[jid]:
                 self.games[jid]['startTime'] = str(round(time.time()))
-
-
-class PlayerXmppPlugin(ElementBase):
-    """Class for custom player stanza extension."""
-
-    name = 'query'
-    namespace = 'jabber:iq:player'
-    interfaces = {'online'}
-    sub_interfaces = interfaces
-    plugin_attrib = 'player'
-
-    def add_player_online(self, player):
-        """Add a player to the extension.
-
-        Arguments:
-            player (str): JID of the player to add
-
-        """
-        self.xml.append(ET.fromstring("<online>%s</online>" % player))
 
 
 class XpartaMuPP(sleekxmpp.ClientXMPP):

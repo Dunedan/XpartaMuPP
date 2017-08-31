@@ -112,6 +112,25 @@ class GameReportXmppPlugin(ElementBase):
         return data
 
 
+class PlayerXmppPlugin(ElementBase):
+    """Class for custom player stanza extension."""
+
+    name = 'query'
+    namespace = 'jabber:iq:player'
+    interfaces = {'online'}
+    sub_interfaces = interfaces
+    plugin_attrib = 'player'
+
+    def add_player_online(self, player):
+        """Add a player to the extension.
+
+        Arguments:
+            player (str): JID of the player to add
+
+        """
+        self.xml.append(ET.fromstring("<online>%s</online>" % player))
+
+
 class ProfileXmppPlugin(ElementBase):
     """Class for custom profile."""
 

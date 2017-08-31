@@ -21,7 +21,7 @@ import logging
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
-from sleekxmpp.xmlstream import ElementBase, register_stanza_plugin, ET
+from sleekxmpp.xmlstream import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 import sqlalchemy
@@ -477,24 +477,6 @@ class ReportManager(object):
         return -1
 
 
-class PlayerXmppPlugin(ElementBase):
-    """Class for custom player stanza extension."""
-
-    name = 'query'
-    namespace = 'jabber:iq:player'
-    interfaces = {'game', 'online'}
-    sub_interfaces = interfaces
-    plugin_attrib = 'player'
-
-    def add_player_online(self, player):
-        """Add a player to the extension.
-
-        Arguments:
-            player (str): JID of the player to add
-        """
-        self.xml.append(ET.fromstring("<player>%s</player>" % player))
-
-
 class EcheLOn(sleekxmpp.ClientXMPP):
     """Main class which handles IQ data and sends new data."""
 
@@ -511,7 +493,6 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         # stanza
         self.nicks = {}
 
-        register_stanza_plugin(Iq, PlayerXmppPlugin)
         register_stanza_plugin(Iq, BoardListXmppPlugin)
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
