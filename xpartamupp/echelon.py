@@ -63,7 +63,7 @@ class Leaderboard(object):
 
         if not player:
             logging.debug("Couldn't find profile for player %s", jid)
-            return None
+            return {}
 
         if player.rating != -1:
             stats['rating'] = player.rating
@@ -610,11 +610,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             try:
                 self.send_profile(iq['from'], command, recipient)
             except Exception:
-                try:
-                    logging.debug("No profile found for %s", command)
-                    self.send_profile_not_found(iq['from'], command, recipient)
-                except Exception:
-                    logging.exception("Failed to send profile not found message to %s", command)
+                logging.exception("Failed to send profile about %s to %s", command, recipient)
             return
 
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
@@ -677,67 +673,44 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send rating list")
 
-    def send_profile(self, to, player, recipient):
+    def send_profile(self, to, player_nick, recipient):
         """Send the player profile to a specified target.
 
         Arguments:
             to (sleekxmpp.xmlstream.jid.JID): player who requested the
                                               profile
-            player (?): ?
+            player_nick (?): ?
             recipient (?): ?
 
         """
-        if not to:
-            logging.error("Failed to send profile")
-            return
-
-        online = False
+        player_jid = None
         for jid, nick in self.nicks.items():
-            if nick == player:
-                stats = self.leaderboard.get_profile(jid)
-                online = True
+            if nick == player_nick:
+                player_jid = jid
                 break
-
-        if not online:
-            stats = self.leaderboard.get_profile(player + "@" + str(recipient).split('@')[1])
-
-        iq = self.make_iq_result(ito=to)
-        stanza = ProfileXmppPlugin()
-        stanza.add_item(player, str(stats['rating']), str(stats['highestRating']),
-                        str(stats['rank']), str(stats['totalGamesPlayed']), str(stats['wins']),
-                        str(stats['losses']))
-        stanza.add_command(player)
-        stanza.add_recipient(recipient)
-        iq.set_payload(stanza)
-
-        if str(to) not in self.nicks:
-            logging.error("No player with the XMPP ID '%s' known to send profile to", str(to))
-            return
+        if not player_jid:
+            player_jid = player_nick + "@" + str(recipient).split('@')[1]
 
         try:
-            iq.send(block=False, now=True)
+            stats = self.leaderboard.get_profile(player_jid)
         except Exception:
-            logging.exception("Failed to send profile")
+            logging.exception("Failed to get leaderboard profile for player %s", player_jid)
+            stats = {}
 
-    def send_profile_not_found(self, to, player, recipient):
-        """Send a profile not-found error to a specified target.
-
-        Arguments:
-            to (sleekxmpp.xmlstream.jid.JID): player who requested the
-                                              profile
-            player (?): ?
-            recipient (?): ?
-
-        """
         iq = self.make_iq_result(ito=to)
         stanza = ProfileXmppPlugin()
-        stanza.add_item(player, str(-2))
-        stanza.add_command(player)
+        if stats:
+            stanza.add_item(player_nick, str(stats['rating']), str(stats['highestRating']),
+                            str(stats['rank']), str(stats['totalGamesPlayed']), str(stats['wins']),
+                            str(stats['losses']))
+        else:
+            stanza.add_item(player_nick, str(-2))
+        stanza.add_command(player_nick)
         stanza.add_recipient(recipient)
         iq.set_payload(stanza)
 
         if str(to) not in self.nicks:
-            logging.error("No player with the XMPP ID '%s' known to send profile to", str(to))
+            logging.error("No player_nick with the XMPP ID '%s' known to send profile to", str(to))
             return
 
         try:
