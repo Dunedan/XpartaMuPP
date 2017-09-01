@@ -18,6 +18,9 @@ setup(
         'sleekxmpp',
         'sqlalchemy',
     ],
+    tests_require=[
+        'parameterized',
+    ],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
@@ -30,4 +33,5 @@ setup(
         'Topic :: Internet :: XMPP',
     ],
     zip_safe=False,
+    test_suite='tests',
 )

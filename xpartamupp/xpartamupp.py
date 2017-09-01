@@ -19,6 +19,7 @@
 import argparse
 import logging
 import time
+import sys
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -77,19 +78,22 @@ class Games(object):
             data (?): ?
 
         """
-        if jid in self.games:
-            if self.games[jid]['nbp-init'] > data['nbp']:
-                logging.debug("change game (%s) state from %s to %s", jid,
-                              self.games[jid]['state'], 'waiting')
-                self.games[jid]['state'] = 'waiting'
-            else:
-                logging.debug("change game (%s) state from %s to %s", jid,
-                              self.games[jid]['state'], 'running')
-                self.games[jid]['state'] = 'running'
-            self.games[jid]['nbp'] = data['nbp']
-            self.games[jid]['players'] = data['players']
-            if 'startTime' not in self.games[jid]:
-                self.games[jid]['startTime'] = str(round(time.time()))
+        if jid not in self.games:
+            logging.warning("Tried to change state for non-existent game %s", jid)
+            return
+
+        if self.games[jid]['nbp-init'] > data['nbp']:
+            logging.debug("change game (%s) state from %s to %s", jid,
+                          self.games[jid]['state'], 'waiting')
+            self.games[jid]['state'] = 'waiting'
+        else:
+            logging.debug("change game (%s) state from %s to %s", jid,
+                          self.games[jid]['state'], 'running')
+            self.games[jid]['state'] = 'running'
+        self.games[jid]['nbp'] = data['nbp']
+        self.games[jid]['players'] = data['players']
+        if 'startTime' not in self.games[jid]:
+            self.games[jid]['startTime'] = str(round(time.time()))
 
 
 class XpartaMuPP(sleekxmpp.ClientXMPP):
@@ -521,19 +525,19 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             self.ratings_bot_warned = True
 
 
-def main():
-    """Entry point a console script."""
+def parse_args(args):
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="XpartaMuPP - XMPP Multiplayer Game Manager")
 
     log_settings = parser.add_mutually_exclusive_group()
     log_settings.add_argument('-q', '--quiet', help='only log errors', action='store_const',
-                              dest='loglevel', const=logging.ERROR)
+                              dest='log_level', const=logging.ERROR)
     log_settings.add_argument('-d', '--debug', help='log debug messages', action='store_const',
-                              dest='loglevel', const=logging.DEBUG)
+                              dest='log_level', const=logging.DEBUG)
     log_settings.add_argument('-v', '--verbose', help='log more informative messages',
-                              action='store_const', dest='loglevel', const=logging.INFO)
-    log_settings.set_defaults(loglevel=logging.WARNING)
+                              action='store_const', dest='log_level', const=logging.INFO)
+    log_settings.set_defaults(log_level=logging.WARNING)
 
     parser.add_argument('-m', '--domain', help='XMPP server to connect to',
                         default="lobby.wildfiregames.com")
@@ -543,9 +547,14 @@ def main():
     parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
     parser.add_argument('-e', '--elo', help='username of the rating bot', default="disabled")
 
-    args = parser.parse_args()
+    return parser.parse_args(args)
 
-    logging.basicConfig(level=args.loglevel,
+
+def main():
+    """Entry point a console script."""
+    args = parse_args(sys.argv[1:])
+
+    logging.basicConfig(level=args.log_level,
                         format='%(asctime)s        %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 

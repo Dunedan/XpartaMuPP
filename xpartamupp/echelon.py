@@ -18,6 +18,7 @@
 
 import argparse
 import logging
+import sys
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -713,8 +714,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.exception("Failed to send profile")
 
 
-def main():
-    """Entry point a console script."""
+def parse_args(args):
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="EcheLOn - XMPP Rating Bot")
 
@@ -734,7 +735,12 @@ def main():
     parser.add_argument('-n', '--nickname', help='nickname shown to players', default="Ratings")
     parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
 
-    args = parser.parse_args()
+    return parser.parse_args(args)
+
+
+def main():
+    """Entry point a console script."""
+    args = parse_args(sys.argv[1:])
 
     logging.basicConfig(level=args.log_level,
                         format='%(asctime)s        %(levelname)-8s %(message)s',
