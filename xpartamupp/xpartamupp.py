@@ -328,38 +328,32 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                                               broadcasted
         """
         games = self.games.get_all_games()
+
+        # Create a stanza with all games
+        stanza = GameListXmppPlugin()
+        for jids in games:
+            stanza.add_game(games[jids])
+
+        iq = self.make_iq_result()
+        iq.set_payload(stanza)
+
         if not to:
             for jid in list(self.nicks):
-                iq = self.make_iq_result(ito=jid)
-                stanza = GameListXmppPlugin()
-                # Pull games and add each to the stanza
-                for jids in games:
-                    stanza.add_game(games[jids])
-                iq.set_payload(stanza)
-
+                iq['to'] = jid
                 try:
                     iq.send(block=False, now=True)
                 except Exception:
                     logging.exception("Failed to send game list")
-
+        else:
+            if str(to) not in self.nicks:
+                logging.error("No player with the XMPP ID '%s' known to send gamelist to.",
+                              str(to))
                 return
-
-        if str(to) not in self.nicks:
-            logging.error("No player with the XMPP ID '%s' known to send gamelist to.",
-                          str(to))
-            return
-
-        iq = self.make_iq_result(ito=to)
-        stanza = GameListXmppPlugin()
-        # Pull games and add each to the stanza
-        for jids in games:
-            stanza.add_game(games[jids])
-        iq.set_payload(stanza)
-
-        try:
-            iq.send(block=False, now=True)
-        except Exception:
-            logging.exception("Failed to send game list")
+            iq['to'] = to
+            try:
+                iq.send(block=False, now=True)
+            except Exception:
+                logging.exception("Failed to send game list")
 
     def _relay_board_list_request(self, recipient, player):
         """Send a boardListRequest to EcheLOn.
@@ -476,9 +470,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         clients.
         """
         iq = self.make_iq_result(ito=to)
-        # for i in board:
-        #     stanza.addItem(board[i]['name'], board[i]['rating'])
-        # stanza.addCommand('boardlist')
         iq.set_payload(board_list)
 
         if not to:
