@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+import argparse
+import sys
+
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, Integer, String, Boolean
 from sqlalchemy.orm import relationship
@@ -140,6 +143,29 @@ class Game(Base):
     players = relationship('Player', secondary='players_info')
 
 
-if __name__ == '__main__':
-    engine = sqlalchemy.create_engine('sqlite:///lobby_rankings.sqlite3')
+def parse_args(args):
+    """Parse command line arguments.
+
+    Arguments:
+        args (dict): Raw command line arguments given to the script
+
+    Returns:
+         Parsed command line arguments
+
+    """
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     description="Helper command for database creation")
+    parser.add_argument('--database-url', help='URL for the leaderboard database',
+                        default="sqlite:///lobby_rankings.sqlite3")
+    return parser.parse_args(args)
+
+
+def main():
+    """Entry point a console script."""
+    args = parse_args(sys.argv[1:])
+    engine = sqlalchemy.create_engine(args.database_url)
     Base.metadata.create_all(engine)
+
+
+if __name__ == '__main__':
+    main()

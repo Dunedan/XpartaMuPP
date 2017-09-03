@@ -30,7 +30,6 @@ from sqlalchemy.orm import sessionmaker
 
 from xpartamupp.elo import get_rating_adjustment
 from xpartamupp.lobby_ranking import Game, Player, PlayerInfo
-
 from xpartamupp.stanzas import BoardListXmppPlugin, GameReportXmppPlugin, ProfileXmppPlugin
 
 # Rating that new players should be inserted into the
@@ -41,11 +40,11 @@ LEADERBOARD_DEFAULT_RATING = 1200
 class Leaderboard(object):
     """Class that provides and manages leaderboard data."""
 
-    def __init__(self):
+    def __init__(self, db_url):
         """Initialize the leaderboard."""
         self.last_rated = ""
 
-        engine = sqlalchemy.create_engine('sqlite:///lobby_rankings.sqlite3')
+        engine = sqlalchemy.create_engine(db_url)
         self.db = sessionmaker(bind=engine)()
 
     def get_profile(self, jid):
@@ -475,14 +474,14 @@ class ReportManager(object):
 class EcheLOn(sleekxmpp.ClientXMPP):
     """Main class which handles IQ data and sends new data."""
 
-    def __init__(self, sjid, password, room, nick):
+    def __init__(self, sjid, password, room, nick, leaderboard):
         """Initialize EcheLOn."""
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
         self.sjid = sjid
         self.room = room
         self.nick = nick
 
-        self.leaderboard = Leaderboard()
+        self.leaderboard = leaderboard
         self.report_manager = ReportManager(self.leaderboard)
         # Store mapping of nicks and JIDs, attached via presence
         # stanza
@@ -715,7 +714,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
 
 def parse_args(args):
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    Arguments:
+        args (dict): Raw command line arguments given to the script
+
+    Returns:
+         Parsed command line arguments
+
+    """
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="EcheLOn - XMPP Rating Bot")
 
@@ -734,6 +741,8 @@ def parse_args(args):
     parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
     parser.add_argument('-n', '--nickname', help='nickname shown to players', default="Ratings")
     parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
+    parser.add_argument('--database-url', help='URL for the leaderboard database',
+                        default="sqlite:///lobby_rankings.sqlite3")
 
     return parser.parse_args(args)
 
@@ -746,8 +755,9 @@ def main():
                         format='%(asctime)s        %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
+    leaderboard = Leaderboard(args.database_url)
     xmpp = EcheLOn(args.login + '@' + args.domain + '/CC', args.password,
-                   args.room + '@conference.' + args.domain, args.nickname)
+                   args.room + '@conference.' + args.domain, args.nickname, leaderboard)
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
     xmpp.register_plugin('xep_0045')  # Multi-User Chat    # used

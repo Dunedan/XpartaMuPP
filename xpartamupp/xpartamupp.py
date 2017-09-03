@@ -526,7 +526,15 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
 
 def parse_args(args):
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    Arguments:
+        args (dict): Raw command line arguments given to the script
+
+    Returns:
+         Parsed command line arguments
+
+    """
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="XpartaMuPP - XMPP Multiplayer Game Manager")
 
