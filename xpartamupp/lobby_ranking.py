@@ -155,6 +155,8 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Helper command for database creation")
+    parser.add_argument('action', help='Action to apply to the database',
+                        choices=['create'])
     parser.add_argument('--database-url', help='URL for the leaderboard database',
                         default="sqlite:///lobby_rankings.sqlite3")
     return parser.parse_args(args)
@@ -164,7 +166,8 @@ def main():
     """Entry point a console script."""
     args = parse_args(sys.argv[1:])
     engine = sqlalchemy.create_engine(args.database_url)
-    Base.metadata.create_all(engine)
+    if args.action == 'create':
+        Base.metadata.create_all(engine)
 
 
 if __name__ == '__main__':

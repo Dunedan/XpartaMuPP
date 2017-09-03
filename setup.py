@@ -11,6 +11,7 @@ setup(
         'console_scripts': [
             'echelon=xpartamupp.echelon:main',
             'xpartamupp=xpartamupp.xpartamupp:main',
+            'echelon-db=xpartamupp.lobby_ranking:main',
         ]
     },
     install_requires=[
