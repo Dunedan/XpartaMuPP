@@ -20,6 +20,7 @@ setup(
         'sqlalchemy',
     ],
     tests_require=[
+        'coverage',
         'parameterized',
     ],
     classifiers=[

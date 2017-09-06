@@ -14,12 +14,17 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+# pylint: disable=no-self-use
+
+import sys
+
 from argparse import Namespace
 from unittest import TestCase
+from unittest.mock import Mock, call, patch
 
 from parameterized import parameterized
 
-from xpartamupp.xpartamupp import Games, parse_args
+from xpartamupp.xpartamupp import Games, main, parse_args
 
 
 class TestGames(TestCase):
@@ -131,3 +136,38 @@ class TestArgumentParsing(TestCase):
         """Test invalid parameter combinations."""
         with self.assertRaises(SystemExit):
             parse_args(cmd_args)
+
+
+class TestMain(TestCase):
+    """Test main method."""
+
+    def test_success(self):
+        """Test successful execution."""
+        with patch('xpartamupp.xpartamupp.parse_args') as args_mock, \
+                patch('xpartamupp.xpartamupp.XpartaMuPP') as xmpp_mock:
+            args_mock.return_value = Mock(log_level=30, login='xpartamupp',
+                                          domain='lobby.wildfiregames.com', password='XXXXXX',
+                                          room='arena', nickname='WFGbot', elo='disabled')
+            main()
+            args_mock.assert_called_once_with(sys.argv[1:])
+            xmpp_mock().register_plugin.assert_has_calls([call('xep_0004'), call('xep_0030'),
+                                                          call('xep_0045'), call('xep_0060'),
+                                                          call('xep_0199')], any_order=True)
+            xmpp_mock().connect.assert_called_once_with()
+            xmpp_mock().process.assert_called_once_with(threaded=False)
+
+    def test_failing_connect(self):
+        """Test failing connect to XMPP server."""
+        with patch('xpartamupp.xpartamupp.parse_args') as args_mock, \
+                patch('xpartamupp.xpartamupp.XpartaMuPP') as xmpp_mock:
+            args_mock.return_value = Mock(log_level=30, login='xpartamupp',
+                                          domain='lobby.wildfiregames.com', password='XXXXXX',
+                                          room='arena', nickname='WFGbot', elo='disabled')
+            xmpp_mock().connect.return_value = False
+            main()
+            args_mock.assert_called_once_with(sys.argv[1:])
+            xmpp_mock().register_plugin.assert_has_calls([call('xep_0004'), call('xep_0030'),
+                                                          call('xep_0045'), call('xep_0060'),
+                                                          call('xep_0199')], any_order=True)
+            xmpp_mock().connect.assert_called_once_with()
+            xmpp_mock().process.assert_not_called()
