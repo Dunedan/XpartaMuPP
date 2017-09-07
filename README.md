@@ -5,46 +5,53 @@ Some commands assume some apt-get based distribution. `lobby.wildfiregames.com` 
 by your own domain name (or localhost) in all commands below.
 
 
-Install ejabberd and the erlang compiler
-========================================
+Install ejabberd
+================
 
-    # apt-get install ejabberd erlang-dev make
+* Install `ejabberd`:
 
-Configure it:
+    ```
+    # apt-get install ejabberd
+    ```
 
+* Configure it, by setting the domain name (e.g. localhost if you installed it on your development
+  computer) and add an admin user.:
+
+    ```
     # dpkg-reconfigure ejabberd
-
-Set the domain name (e.g. localhost if you installed it on your development computer) and add an
-admin user.
+    ```
 
 You should now be able to connect to this XMPP server using a normal XMPP client.
 
-Installation of the custom XMPP module
+Installation of the custom ejabberd module
 ======================================
 
-Go to its source directory
+* Adjust `/etc/ejabberd/ejabberdctl.cfg` and set `CONTRIB_MODULES_PATH` to the directory where
+  you want to store `mod_ipstamp`:
 
-    $ cd source/tools/XpartaMuPP
+    CONTRIB_MODULES_PATH=/opt/ejabberd-modules
 
-Edit `mod_ipstamp.erl` to set the domain (e.g. localhost) on which the ejabberd server is run.
+* Ensure the target directory is readable by ejabberd.
+* Copy the `mod_ipstamp` directory from `XpartaMuPP/` to `CONTRIB_MODULES_PATH/sources/`.
+* Check that the module is available and compatible with your ejabberd:
 
-    # -define (Domain, <server domain>).
+    $ ejabberdctl modules_available
+    $ ejabberdctl module_check mod_ipstamp
 
-Build and install it
+* Install `mod_ipstamp`:
 
-    $ make
-    # make install
+    $ ejabberdctl module_install mod_ipstamp
 
-We want ejabberd to load the module, so add the following to the `modules` section in
-`/etc/ejabberd/ejabberd.cfg`:
+* Add `mod_ipstamp` to the modules ejabberd should load in`/etc/ejabberd/ejabberd.yml`:
 
-    {mod_ipstamp, []}
+    modules:
+      mod_ipstamp: {}
 
-Restart ejabberd
+* Reload ejabberd's configuration:
 
-    # service ejabberd restart
+    $ ejabberdctl reload_config
 
-If something goes wrong, read `/var/log/ejabberd/ejabberd.log`
+If something goes wrong, check `/var/log/ejabberd/ejabberd.log`
 
 Ejabberd configuration
 ======================
@@ -53,45 +60,59 @@ A web administration interface is available at http://localhost:5280/admin. Use 
 credentials (full JID (user@domain)) to log in. Changing settings there is also possible, but some
 of those might not persist on restart.
 
-The rest of this section should be done by editing `/etc/ejabberd/ejabberd.cfg`.
+The rest of this section should be done by editing `/etc/ejabberd/ejabberd.yml`.
 
-We want to allow users to create accounts using the game so allow in-band registration:
+* Allow users to create accounts using the game via in-band registration:
 
-    {access, register, [{allow, all}]}.
+    access:
+      register:
+        all: allow
 
-You can see the list of registered using:
+* Check list of registered users:
 
-    # ejabberdctl registered_users lobby.wildfiregames.com
+    ```
+    $ ejabberdctl registered_users lobby.wildfiregames.com
+    ```
 
-XpartaMuPP needs a user to function, so create one using:
+* `XpartaMuPP` and `EcheLOn` need a user accountsto function, so create them using:
 
-    # ejabberdctl register wfgbot lobby.wildfiregames.com hunter2
+    ```
+    $ ejabberdctl register echelon lobby.wildfiregames.com secure_password
+    $ ejabberdctl register xpartamupp lobby.wildfiregames.com secure_password
+    ```
 
-The bot also needs to be able to get the IPs of users hosting a match, which is what the `ipstamp`
-module does.
-Create an ACL for the bot (or bots):
+* The bots also need to be able to get the IPs of users hosting a match, which is what
+ `mod_ipstamp` does.
 
-    {acl, bots, {user, "wfgbot", "lobby.wildfiregames.com"}}.
+  * Create an ACL for the bot (or bots):
 
-Add an access rule (name it `ipbots` since that is what the module expects):
+    acl:
+      bots:
+        user:
+          - "echelon@lobby.wildfiregames.com"
+          - "xpartamupp@lobby.wildfiregames.com"
 
-    {access, ipbots, [{allow, bots}]}.
+* Add an access rule (name it `ipbots` since that is what the module expects):
 
-Due to the amount of traffic the bot may process, give the group containing bots either unlimited
-or a very high traffic shaper.
+    access:
+      ipbots:
+        bots: allow
 
-    {access, c2s_shaper, [{none, admin},
-                      {none, bots},
-                      {normal, all}]}.
+* Due to the amount of traffic the bot may process, give the group containing bots either unlimited
+  or a very high traffic shaper:
 
+    c2s_shaper:
+      admin: none
+      bots: none
+      all: normal
 
-MUC room setup
-==============
+* The bots need the real JIDs of the MUC users, which are only available for admin users,
+  therefore the following setting is necessary:
 
-To enable the bot to send the game list to players it needs the JIDs of the players, so the room
-should be configured as such. In case that you want to host multiple lobby rooms adding an ACL for
-MUC admins to which the bots are added, which is used for `access_admin` in the `mod_muc`
-configuration would be advisable.
+    access:
+      muc_admin:
+        admin: allow
+        bots: allow
 
 Run XpartaMuPP - XMPP Multiplayer Game Manager
 ==============================================

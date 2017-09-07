@@ -32,6 +32,8 @@ wheels/
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# don't ignore specs for ejabberd modules
+!mod_*.spec
 
 # Installer logs
 pip-log.txt
