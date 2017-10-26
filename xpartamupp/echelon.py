@@ -105,25 +105,6 @@ class Leaderboard(object):
         logging.debug("Created player %s", jid)
         return player
 
-    def remove_player(self, jid):
-        """Remove a player from leaderboard database.
-
-        Arguments:
-            jid (str): JID of the player to remove
-
-        Returns:
-            Player that was removed or None if that player didn't
-            exist
-
-        """
-        player = self.db.query(Player).filter_by(jid=jid).first()
-        if player:
-            player.delete()
-            logging.debug("Deleted player %s", jid)
-            return player
-
-        return None
-
     def _add_game(self, game_report):
         """Add a game to the database.
 
