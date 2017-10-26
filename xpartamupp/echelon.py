@@ -545,7 +545,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             recipient = iq['boardlist']['recipient']
             if command == 'getleaderboard':
                 try:
-                    self.leaderboard.get_or_create_player(iq['from'])
+                    self.leaderboard.get_or_create_player(str(iq['from']))
                     self._send_leaderboard(iq['from'], recipient)
                 except Exception:
                     logging.exception("Failed to process get leaderboard request from %s",
