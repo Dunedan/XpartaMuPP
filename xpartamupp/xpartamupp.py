@@ -220,7 +220,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def _iq_game_list_handler(self, iq):
         """Handle game state change requests."""
-        if iq['type'] == 'set' and 'gamelist' in iq.plugins:
+        if iq['type'] == 'set':
             command = iq['gamelist']['command']
             if command == 'register':
                 # Add game
@@ -257,17 +257,15 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         automatically on joining the room.
         """
         if iq['type'] == 'get':
-            if 'boardlist' in iq.plugins:
-                try:
-                    self._relay_board_list_request(self.ratings_bot, iq['from'])
-                except Exception:
-                    logging.exception("Failed to relay the get leaderboard request from %s to the "
-                                      "ratings bot", iq['from'].bare)
-                return
+            try:
+                self._relay_board_list_request(self.ratings_bot, iq['from'])
+            except Exception:
+                logging.exception("Failed to relay the get leaderboard request from %s to the "
+                                  "ratings bot", iq['from'].bare)
+            return
         elif iq['type'] == 'result':
-            if 'boardlist' in iq.plugins:
-                recipient = iq['boardlist']['recipient']
-                self._relay_board_list(iq['boardlist'], recipient)
+            recipient = iq['boardlist']['recipient']
+            self._relay_board_list(iq['boardlist'], recipient)
             return
 
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
@@ -275,7 +273,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients."""
-        if iq['type'] == 'set' and 'gamereport' in iq.plugins:
+        if iq['type'] == 'set':
             try:
                 self._relay_game_report(iq['gamereport'], iq['from'])
             except Exception:
@@ -293,24 +291,22 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         automatically on joining the room.
         """
         if iq['type'] == 'get':
-            if 'profile' in iq.plugins:
-                try:
-                    self._relay_profile_request(self.ratings_bot, iq['from'],
-                                                iq['profile']['command'])
-                except Exception:
-                    logging.exception("Failed to relay profile request from %s to the ratings bot",
-                                      iq['from'].bare)
-                return
+            try:
+                self._relay_profile_request(self.ratings_bot, iq['from'],
+                                            iq['profile']['command'])
+            except Exception:
+                logging.exception("Failed to relay profile request from %s to the ratings bot",
+                                  iq['from'].bare)
+            return
         elif iq['type'] == 'result':
-            if 'profile' in iq.plugins:
-                recipient = iq['profile']['recipient']
-                player = iq['profile']['command']
-                try:
-                    self._relay_profile(iq['profile'], player, recipient)
-                except Exception:
-                    logging.exception("Failed to relay profile response from the ratings bot to "
-                                      "%s", recipient)
-                return
+            recipient = iq['profile']['recipient']
+            player = iq['profile']['command']
+            try:
+                self._relay_profile(iq['profile'], player, recipient)
+            except Exception:
+                logging.exception("Failed to relay profile response from the ratings bot to "
+                                  "%s", recipient)
+            return
 
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)

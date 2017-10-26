@@ -547,7 +547,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _iq_player_handler(self, iq):
         """Handle new clients announcing themselves as online."""
-        if iq['type'] == 'set' and 'player' in iq.plugins:
+        if iq['type'] == 'set':
             player = iq['player']['online']
             self.leaderboard.get_or_create_player(player)
             return
@@ -557,7 +557,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _iq_board_list_handler(self, iq):
         """Handle incoming leaderboard list requests."""
-        if iq['type'] == 'get' and 'boardlist' in iq.plugins:
+        if iq['type'] == 'get':
             command = iq['boardlist']['command']
             recipient = iq['boardlist']['recipient']
             if command == 'getleaderboard':
@@ -580,7 +580,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients."""
-        if iq['type'] == 'set' and 'gamereport' in iq.plugins:
+        if iq['type'] == 'set':
             try:
                 self.report_manager.add_report(iq['gamereport']['sender'],
                                                iq['gamereport']['game'])
@@ -598,7 +598,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _iq_profile_handler(self, iq):
         """Handle profile requests from clients."""
-        if iq['type'] == 'get' and 'profile' in iq.plugins:
+        if iq['type'] == 'get':
             command = iq['profile']['command']
             recipient = iq['profile']['recipient']
             try:
