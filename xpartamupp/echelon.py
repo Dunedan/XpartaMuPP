@@ -30,7 +30,8 @@ from sqlalchemy.orm import sessionmaker
 
 from xpartamupp.elo import get_rating_adjustment
 from xpartamupp.lobby_ranking import Game, Player, PlayerInfo
-from xpartamupp.stanzas import BoardListXmppPlugin, GameReportXmppPlugin, ProfileXmppPlugin
+from xpartamupp.stanzas import (BoardListXmppPlugin, GameReportXmppPlugin, PlayerXmppPlugin,
+                                ProfileXmppPlugin)
 
 # Rating that new players should be inserted into the
 # database with, before they've played any games.
@@ -487,6 +488,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         # stanza
         self.nicks = {}
 
+        register_stanza_plugin(Iq, PlayerXmppPlugin)
         register_stanza_plugin(Iq, BoardListXmppPlugin)
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
