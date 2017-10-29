@@ -164,12 +164,19 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
-        if self.ratings_bot in self.nicks:
-            self._relay_rating_list_request(self.ratings_bot)
+        if nick != self.nick:
+            if jid not in self.nicks:
+                self.nicks[jid] = nick
+
+        if sleekxmpp.jid.JID(jid=jid).resource != '0ad':
+            return
 
         if nick != self.nick:
             if jid not in self.nicks:
                 self.nicks[jid] = nick
+
+            if self.ratings_bot in self.nicks:
+                self._relay_rating_list_request(self.ratings_bot)
 
             # Send game list to new player.
             self._send_game_list(presence['muc']['jid'])
@@ -218,6 +225,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def _iq_game_list_handler(self, iq):
         """Handle game state change requests."""
+        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+            return
+
         if iq['type'] == 'set':
             command = iq['gamelist']['command']
             if command == 'register':
@@ -254,6 +264,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         Depreciated once muc_online can send lists/register
         automatically on joining the room.
         """
+        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+            return
+
         if iq['type'] == 'get':
             try:
                 self._relay_board_list_request(self.ratings_bot, iq['from'])
@@ -271,6 +284,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients."""
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
+            return
+
         if iq['type'] == 'set':
             try:
                 self._relay_game_report(iq['gamereport'], iq['from'])
@@ -288,6 +304,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         Depreciated once muc_online can send lists/register
         automatically on joining the room.
         """
+        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+            return
+
         if iq['type'] == 'get':
             try:
                 self._relay_profile_request(self.ratings_bot, iq['from'],

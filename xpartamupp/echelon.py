@@ -511,6 +511,9 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                 self.nicks[jid] = nick
             logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
+        if sleekxmpp.jid.JID(jid=jid).resource != '0ad':
+            return
+
         self.leaderboard.get_or_create_player(jid)
 
     def _muc_offline(self, presence):
@@ -529,6 +532,9 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _iq_board_list_handler(self, iq):
         """Handle incoming leaderboard list requests."""
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+            return
+
         if iq['type'] == 'get':
             command = iq['boardlist']['command']
             recipient = iq['boardlist']['recipient']
@@ -552,6 +558,9 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients."""
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+            return
+
         if iq['type'] == 'set':
             try:
                 self.report_manager.add_report(iq['gamereport']['sender'],
@@ -570,6 +579,9 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _iq_profile_handler(self, iq):
         """Handle profile requests from clients."""
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+            return
+
         if iq['type'] == 'get':
             command = iq['profile']['command']
             recipient = iq['profile']['recipient']
