@@ -28,7 +28,7 @@ from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 
 from xpartamupp.stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlugin,
-                                PlayerXmppPlugin, ProfileXmppPlugin)
+                                ProfileXmppPlugin)
 
 
 class Games(object):
@@ -123,7 +123,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         # stanza
         self.nicks = {}
 
-        register_stanza_plugin(Iq, PlayerXmppPlugin)
         register_stanza_plugin(Iq, GameListXmppPlugin)
         register_stanza_plugin(Iq, BoardListXmppPlugin)
         register_stanza_plugin(Iq, GameReportXmppPlugin)
@@ -168,7 +167,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if self.ratings_bot in self.nicks:
             self._relay_rating_list_request(self.ratings_bot)
 
-        self._relay_player_online(jid)
         if nick != self.nick:
             if jid not in self.nicks:
                 self.nicks[jid] = nick
@@ -419,27 +417,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq.send(block=False, now=True)
         except Exception:
             logging.exception("Failed to send profile request")
-
-    def _relay_player_online(self, jid):
-        """Tells EcheLOn that someone comes online.
-
-        Arguments:
-            jid (?): ?
-
-        """
-        to = self.ratings_bot
-        if to not in self.nicks:
-            return
-
-        iq = self.make_iq_set(ito=to)
-        stanza = PlayerXmppPlugin()
-        stanza.add_player_online(jid)
-        iq.set_payload(stanza)
-
-        try:
-            iq.send(block=False, now=True)
-        except Exception:
-            logging.exception("Failed to send player muc online")
 
     def _relay_game_report(self, data, sender):
         """Relay a game report to EcheLOn."""

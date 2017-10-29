@@ -30,8 +30,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from xpartamupp.elo import get_rating_adjustment
 from xpartamupp.lobby_ranking import Game, Player, PlayerInfo
-from xpartamupp.stanzas import (BoardListXmppPlugin, GameReportXmppPlugin, PlayerXmppPlugin,
-                                ProfileXmppPlugin)
+from xpartamupp.stanzas import (BoardListXmppPlugin, GameReportXmppPlugin, ProfileXmppPlugin)
 
 # Rating that new players should be inserted into the
 # database with, before they've played any games.
@@ -470,13 +469,10 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         # stanza
         self.nicks = {}
 
-        register_stanza_plugin(Iq, PlayerXmppPlugin)
         register_stanza_plugin(Iq, BoardListXmppPlugin)
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Player', StanzaPath('iq/player'),
-                                       self._iq_player_handler, instream=True))
         self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'),
                                        self._iq_board_list_handler, instream=True))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
@@ -515,6 +511,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                 self.nicks[jid] = nick
             logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
+        self.leaderboard.get_or_create_player(jid)
+
     def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
 
@@ -529,24 +527,14 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             if jid in self.nicks:
                 del self.nicks[jid]
 
-    def _iq_player_handler(self, iq):
-        """Handle new clients announcing themselves as online."""
-        if iq['type'] == 'set':
-            player = iq['player']['online']
-            self.leaderboard.get_or_create_player(player)
-            return
-
-        logging.warning("Failed to process stanza type '%s' received from %s",
-                        iq['type'], iq['from'].bare)
-
     def _iq_board_list_handler(self, iq):
         """Handle incoming leaderboard list requests."""
         if iq['type'] == 'get':
             command = iq['boardlist']['command']
             recipient = iq['boardlist']['recipient']
+            self.leaderboard.get_or_create_player(str(iq['from']))
             if command == 'getleaderboard':
                 try:
-                    self.leaderboard.get_or_create_player(str(iq['from']))
                     self._send_leaderboard(iq['from'], recipient)
                 except Exception:
                     logging.exception("Failed to process get leaderboard request from %s",
