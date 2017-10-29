@@ -737,7 +737,7 @@ def main():
     xmpp.register_plugin('xep_0199')  # XMPP Ping
 
     if xmpp.connect():
-        xmpp.process(threaded=False)
+        xmpp.process()
     else:
         logging.error("Unable to connect")
 
