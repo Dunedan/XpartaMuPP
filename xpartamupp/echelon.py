@@ -26,7 +26,7 @@ from sleekxmpp.xmlstream import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 import sqlalchemy
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from xpartamupp.elo import get_rating_adjustment
 from xpartamupp.lobby_ranking import Game, Player, PlayerInfo
@@ -46,7 +46,8 @@ class Leaderboard(object):
         self.last_rated = ""
 
         engine = sqlalchemy.create_engine(db_url)
-        self.db = sessionmaker(bind=engine)()
+        session_factory = sessionmaker(bind=engine)
+        self.db = scoped_session(session_factory)
 
     def get_profile(self, jid):
         """Get the leaderboard profile for the specified player.
