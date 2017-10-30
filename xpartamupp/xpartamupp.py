@@ -356,17 +356,13 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 try:
                     iq.send(block=False, now=True)
                 except Exception:
-                    logging.exception("Failed to send game list")
+                    logging.exception("Failed to send game list to %s", str(jid))
         else:
-            if str(to) not in self.nicks:
-                logging.error("No player with the XMPP ID '%s' known to send gamelist to.",
-                              str(to))
-                return
             iq['to'] = to
             try:
                 iq.send(block=False, now=True)
             except Exception:
-                logging.exception("Failed to send game list")
+                logging.exception("Failed to send game list to %s", str(to))
 
     def _relay_board_list_request(self, recipient, player):
         """Send a boardListRequest to EcheLOn.
@@ -390,7 +386,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send get leaderboard request")
+            logging.exception("Failed to send get leaderboard request from %s", str(recipient))
 
     def _relay_rating_list_request(self, recipient):
         """Send a ratingListRequest to EcheLOn.
@@ -411,7 +407,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send rating list request")
+            logging.exception("Failed to send rating list request to %s", str(recipient))
 
     def _relay_profile_request(self, recipient, player, command):
         """Send a profileRequest to EcheLOn.
@@ -435,7 +431,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send profile request")
+            logging.exception("Failed to send profile request to %s", str(recipient))
 
     def _relay_game_report(self, data, sender):
         """Relay a game report to EcheLOn."""
@@ -453,7 +449,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send game report request")
+            logging.exception("Failed to send game report request to %s", str(to))
 
     def _relay_board_list(self, board_list, to=None):
         """Send the whole leaderboard.
@@ -471,17 +467,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 try:
                     iq.send(block=False, now=True)
                 except Exception:
-                    logging.exception("Failed to send rating list")
+                    logging.exception("Failed to send rating list to %s", str(jid))
         else:
-            # Leaderboard
-            if str(to) not in self.nicks:
-                logging.error("No player with the XMPP ID '%s' known to send leaderboard to",
-                              str(to))
-                return
             try:
                 iq.send(block=False, now=True)
             except Exception:
-                logging.exception("Failed to send leaderboard")
+                logging.exception("Failed to send leaderboard to %s", str(to))
 
     def _relay_profile(self, data, player, to):  # pylint: disable=unused-argument
         """Send the player profile to a specified target."""
@@ -492,14 +483,10 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         iq = self.make_iq_result(ito=to)
         iq.set_payload(data)
 
-        if str(to) not in self.nicks:
-            logging.error("No player with the XmPP ID '%s' known to send profile to", str(to))
-            return
-
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send profile")
+            logging.exception("Failed to send profile to %s", str(to))
 
     def _warn_ratings_bot_offline(self):
         """Warn if the ratings bot is offline."""

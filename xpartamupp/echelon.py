@@ -616,14 +616,10 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         stanza.add_recipient(recipient)
         iq.set_payload(stanza)
 
-        if str(to) not in self.nicks:
-            logging.error("No player with the XMPP ID '%s' known to send leaderboard to", str(to))
-            return
-
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send leaderboard")
+            logging.exception("Failed to send leaderboard to %s", str(to))
 
     def _send_rating_list(self, to):
         """Send the rating list.
@@ -642,14 +638,10 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         stanza.add_command('ratinglist')
         iq.set_payload(stanza)
 
-        if str(to) not in self.nicks:
-            logging.error("No player with the XMPP ID '%s' known to send rating list to", str(to))
-            return
-
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send rating list")
+            logging.exception("Failed to send rating list to %s", str(to))
 
     def _send_profile(self, to, player_nick, recipient):
         """Send the player profile to a specified target.
@@ -687,14 +679,10 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         stanza.add_recipient(recipient)
         iq.set_payload(stanza)
 
-        if str(to) not in self.nicks:
-            logging.error("No player_nick with the XMPP ID '%s' known to send profile to", str(to))
-            return
-
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send profile")
+            logging.exception("Failed to send profile to %s", str(to))
 
 
 def parse_args(args):
