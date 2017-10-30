@@ -473,11 +473,11 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'),
+        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq@type=get/boardlist'),
                                        self._iq_board_list_handler, instream=True))
-        self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
+        self.register_handler(Callback('Iq GameReport', StanzaPath('iq@type=set/gamereport'),
                                        self._iq_game_report_handler, instream=True))
-        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'),
+        self.register_handler(Callback('Iq Profile', StanzaPath('iq@type=get/profile'),
                                        self._iq_profile_handler, instream=True))
 
         self.add_event_handler("session_start", self._session_start)
@@ -542,26 +542,22 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
             return
 
-        if iq['type'] == 'get':
-            command = iq['boardlist']['command']
-            recipient = iq['boardlist']['recipient']
-            self.leaderboard.get_or_create_player(str(iq['from']))
-            if command == 'getleaderboard':
-                try:
-                    self._send_leaderboard(iq, recipient)
-                except Exception:
-                    logging.exception("Failed to process get leaderboard request from %s",
-                                      iq['from'].bare)
-                return
-            elif command == 'getratinglist':
-                try:
-                    self._send_rating_list(iq)
-                except Exception:
-                    logging.exception("Failed to send the rating list to %s", iq['from'])
-                return
-
-        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
-                        iq['from'].bare)
+        command = iq['boardlist']['command']
+        recipient = iq['boardlist']['recipient']
+        self.leaderboard.get_or_create_player(str(iq['from']))
+        if command == 'getleaderboard':
+            try:
+                self._send_leaderboard(iq, recipient)
+            except Exception:
+                logging.exception("Failed to process get leaderboard request from %s",
+                                  iq['from'].bare)
+            return
+        elif command == 'getratinglist':
+            try:
+                self._send_rating_list(iq)
+            except Exception:
+                logging.exception("Failed to send the rating list to %s", iq['from'])
+            return
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients.
@@ -573,21 +569,17 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
             return
 
-        if iq['type'] == 'set':
-            try:
-                self.report_manager.add_report(iq['gamereport']['sender'],
-                                               iq['gamereport']['game'])
-                if self.leaderboard.get_last_rated_message() != "":
-                    self.send_message(mto=self.room,
-                                      mbody=self.leaderboard.get_last_rated_message(),
-                                      mtype="groupchat", mnick=self.nick)
-                    self._send_rating_list(iq)
-            except Exception:
-                logging.exception("Failed to update game statistics for %s", iq['from'].bare)
-            return
-
-        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
-                        iq['from'].bare)
+        try:
+            self.report_manager.add_report(iq['gamereport']['sender'],
+                                           iq['gamereport']['game'])
+            if self.leaderboard.get_last_rated_message() != "":
+                self.send_message(mto=self.room,
+                                  mbody=self.leaderboard.get_last_rated_message(),
+                                  mtype="groupchat", mnick=self.nick)
+                self._send_rating_list(iq)
+        except Exception:
+            logging.exception("Failed to update game statistics for %s", iq['from'].bare)
+        return
 
     def _iq_profile_handler(self, iq):
         """Handle profile requests from clients.
@@ -599,17 +591,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
             return
 
-        if iq['type'] == 'get':
-            command = iq['profile']['command']
-            recipient = iq['profile']['recipient']
-            try:
-                self._send_profile(iq, command, recipient)
-            except Exception:
-                logging.exception("Failed to send profile about %s to %s", command, recipient)
-            return
-
-        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
-                        iq['from'].bare)
+        command = iq['profile']['command']
+        recipient = iq['profile']['recipient']
+        try:
+            self._send_profile(iq, command, recipient)
+        except Exception:
+            logging.exception("Failed to send profile about %s to %s", command, recipient)
+        return
 
     def _send_leaderboard(self, iq, recipient):
         """Send the whole leaderboard.
