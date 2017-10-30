@@ -539,7 +539,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
             return
 
         if iq['type'] == 'get':
@@ -570,7 +570,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
             return
 
         if iq['type'] == 'set':
@@ -596,7 +596,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
             return
 
         if iq['type'] == 'get':
