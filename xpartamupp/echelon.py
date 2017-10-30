@@ -541,14 +541,14 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             self.leaderboard.get_or_create_player(str(iq['from']))
             if command == 'getleaderboard':
                 try:
-                    self._send_leaderboard(iq['from'], recipient)
+                    self._send_leaderboard(iq, recipient)
                 except Exception:
                     logging.exception("Failed to process get leaderboard request from %s",
                                       iq['from'].bare)
                 return
             elif command == 'getratinglist':
                 try:
-                    self._send_rating_list(iq['from'])
+                    self._send_rating_list(iq)
                 except Exception:
                     logging.exception("Failed to send the rating list to %s", iq['from'])
                 return
@@ -569,7 +569,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                     self.send_message(mto=self.room,
                                       mbody=self.leaderboard.get_last_rated_message(),
                                       mtype="groupchat", mnick=self.nick)
-                    self._send_rating_list(iq['from'])
+                    self._send_rating_list(iq)
             except Exception:
                 logging.exception("Failed to update game statistics for %s", iq['from'].bare)
             return
@@ -586,7 +586,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             command = iq['profile']['command']
             recipient = iq['profile']['recipient']
             try:
-                self._send_profile(iq['from'], command, recipient)
+                self._send_profile(iq, command, recipient)
             except Exception:
                 logging.exception("Failed to send profile about %s to %s", command, recipient)
             return
@@ -594,21 +594,19 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
                         iq['from'].bare)
 
-    def _send_leaderboard(self, to, recipient):
+    def _send_leaderboard(self, iq, recipient):
         """Send the whole leaderboard.
 
         If no target is passed the leaderboard is broadcasted to all
         clients.
 
         Arguments:
-            to (sleekxmpp.xmlstream.jid.JID): sender of the get
-                                              leaderboard request (can
-                                              be player or XpartaMuPP)
+            iq (sleekxmpp.stanza.iq.IQ): IQ to reply to
             recipient (str): Player who requested the leaderboard
         """
         board = self.leaderboard.get_board()
 
-        iq = self.make_iq_result(ito=to)
+        iq = iq.reply(clear=True)
         stanza = BoardListXmppPlugin()
         for value in board.values():
             stanza.add_item(value['name'], value['rating'])
@@ -619,19 +617,18 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send leaderboard to %s", str(to))
+            logging.exception("Failed to send leaderboard to %s", str(iq['to']))
 
-    def _send_rating_list(self, to):
+    def _send_rating_list(self, iq):
         """Send the rating list.
 
         Arguments:
-            to (sleekxmpp.xmlstream.jid.JID): player who should receive
-                                              the rating list
+            iq (sleekxmpp.stanza.iq.IQ): IQ to reply to
 
         """
         rating_list = self.leaderboard.get_rating_list(self.nicks)
 
-        iq = self.make_iq_result(ito=to)
+        iq = iq.reply(clear=True)
         stanza = BoardListXmppPlugin()
         for values in rating_list.values():
             stanza.add_item(values['name'], values['rating'])
@@ -641,13 +638,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send rating list to %s", str(to))
+            logging.exception("Failed to send rating list to %s", str(iq['to']))
 
-    def _send_profile(self, to, player_nick, recipient):
+    def _send_profile(self, iq, player_nick, recipient):
         """Send the player profile to a specified target.
 
         Arguments:
-            to (sleekxmpp.xmlstream.jid.JID): player who requested the
+            iq (sleekxmpp.xmlstream.jid.JID): player who requested the
                                               profile
             player_nick (?): ?
             recipient (?): ?
@@ -667,7 +664,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.exception("Failed to get leaderboard profile for player %s", player_jid)
             stats = {}
 
-        iq = self.make_iq_result(ito=to)
+        iq = iq.reply(clear=True)
         stanza = ProfileXmppPlugin()
         if stats:
             stanza.add_item(player_nick, str(stats['rating']), str(stats['highestRating']),
@@ -682,7 +679,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False, now=True)
         except Exception:
-            logging.exception("Failed to send profile to %s", str(to))
+            logging.exception("Failed to send profile to %s", str(iq['to']))
 
 
 def parse_args(args):
