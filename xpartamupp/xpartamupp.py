@@ -158,7 +158,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """Add joining players to the list of players.
 
         Arguments:
-            presence (?): ?
+            presence (sleekxmpp.stanza.presence.Presence): Received
+                presence stanza.
 
         """
         nick = str(presence['muc']['nick'])
@@ -186,7 +187,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """Remove leaving players from the list of players.
 
         Arguments:
-            presence (?): ?
+            presence (sleekxmpp.stanza.presence.Presence): Received
+                presence stanza.
 
         """
         nick = str(presence['muc']['nick'])
@@ -224,7 +226,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                               mtype='groupchat')
 
     def _iq_game_list_handler(self, iq):
-        """Handle game state change requests."""
+        """Handle game state change requests.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
+        """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
 
@@ -257,8 +264,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
     def _iq_board_list_request_handler(self, iq):
         """Handle board list requests and responses.
 
-        Depreciated once muc_online can send lists/register
+        Deprecated once muc_online can send lists/register
         automatically on joining the room.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
         """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
@@ -289,6 +300,10 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         If no target is passed the leaderboard is broadcasted to all
         clients.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
         """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
             return
@@ -312,7 +327,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 logging.exception("Failed to send leaderboard to %s", str(to))
 
     def _iq_game_report_handler(self, iq):
-        """Handle end of game reports from clients."""
+        """Handle end of game reports from clients.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
+        """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
 
@@ -341,6 +361,10 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         Forwards profile requests to the ratings bot and register a
         callback for its response.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
         """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
@@ -369,6 +393,10 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         Relay a profile result returned by the ratings bot to the
         player who requested it.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
         """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
             return
@@ -397,9 +425,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         Arguments:
             to (sleekxmpp.xmlstream.jid.JID): Player to send the game
-                                              list to. If None, the
-                                              game list will be
-                                              broadcasted
+                list to. If None, the game list will be broadcasted
         """
         games = self.games.get_all_games()
 

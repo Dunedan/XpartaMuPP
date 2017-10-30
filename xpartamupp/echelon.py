@@ -500,7 +500,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Add joining players to the list of players.
 
         Arguments:
-            presence (?): ?
+            presence (sleekxmpp.stanza.presence.Presence): Received
+                presence stanza.
 
         """
         nick = str(presence['muc']['nick'])
@@ -520,7 +521,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Remove leaving players from the list of players.
 
         Arguments:
-            presence (?): ?
+            presence (sleekxmpp.stanza.presence.Presence): Received
+                presence stanza.
 
         """
         nick = str(presence['muc']['nick'])
@@ -531,7 +533,12 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                 del self.nicks[jid]
 
     def _iq_board_list_handler(self, iq):
-        """Handle incoming leaderboard list requests."""
+        """Handle incoming leaderboard list requests.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
+        """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
             return
 
@@ -557,7 +564,12 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                         iq['from'].bare)
 
     def _iq_game_report_handler(self, iq):
-        """Handle end of game reports from clients."""
+        """Handle end of game reports from clients.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
+        """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
             return
 
@@ -578,7 +590,12 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                         iq['from'].bare)
 
     def _iq_profile_handler(self, iq):
-        """Handle profile requests from clients."""
+        """Handle profile requests from clients.
+
+        Arguments:
+            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
+
+        """
         if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
             return
 
@@ -601,7 +618,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         clients.
 
         Arguments:
-            iq (sleekxmpp.stanza.iq.IQ): IQ to reply to
+            iq (sleekxmpp.stanza.iq.IQ): IQ stanza to reply to
             recipient (str): Player who requested the leaderboard
         """
         board = self.leaderboard.get_board()
@@ -623,7 +640,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Send the rating list.
 
         Arguments:
-            iq (sleekxmpp.stanza.iq.IQ): IQ to reply to
+            iq (sleekxmpp.stanza.iq.IQ): IQ stanza to reply to
 
         """
         rating_list = self.leaderboard.get_rating_list(self.nicks)
