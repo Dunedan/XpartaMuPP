@@ -128,14 +128,14 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, GameReportXmppPlugin)
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
-        self.register_handler(Callback('Iq Gamelist', StanzaPath('iq/gamelist'),
+        self.register_handler(Callback('Iq Gamelist', StanzaPath('iq@type=set/gamelist'),
                                        self._iq_game_list_handler, instream=True))
-        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq/boardlist'),
-                                       self._iq_board_list_handler, instream=True))
-        self.register_handler(Callback('Iq GameReport', StanzaPath('iq/gamereport'),
+        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq@type=get/boardlist'),
+                                       self._iq_board_list_request_handler, instream=True))
+        self.register_handler(Callback('Iq GameReport', StanzaPath('iq@type=set/gamereport'),
                                        self._iq_game_report_handler, instream=True))
-        self.register_handler(Callback('Iq Profile', StanzaPath('iq/profile'),
-                                       self._iq_profile_handler, instream=True))
+        self.register_handler(Callback('Iq Profile', StanzaPath('iq@type=get/profile'),
+                                       self._iq_profile_request_handler, instream=True))
 
         self.add_event_handler("session_start", self._session_start)
         self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
@@ -225,108 +225,169 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
     def _iq_game_list_handler(self, iq):
         """Handle game state change requests."""
-        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
 
-        if iq['type'] == 'set':
-            command = iq['gamelist']['command']
-            if command == 'register':
-                # Add game
-                try:
-                    self.games.add_game(str(iq['from']), iq['gamelist']['game'])
-                    self._send_game_list()
-                except Exception:
-                    logging.exception("Failed to process game registration data")
-                return
-            elif command == 'unregister':
-                # Remove game
-                try:
-                    self.games.remove_game(str(iq['from']))
-                    self._send_game_list()
-                except Exception:
-                    logging.exception("Failed to process game unregistration data")
-                return
-            elif command == 'changestate':
-                # Change game status (waiting/running)
-                try:
-                    self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
-                    self._send_game_list()
-                except Exception:
-                    logging.exception("Failed to process changestate data")
-                return
+        command = iq['gamelist']['command']
+        if command == 'register':
+            # Add game
+            try:
+                self.games.add_game(str(iq['from']), iq['gamelist']['game'])
+                self._send_game_list()
+            except Exception:
+                logging.exception("Failed to process game registration data")
+            return
+        elif command == 'unregister':
+            # Remove game
+            try:
+                self.games.remove_game(str(iq['from']))
+                self._send_game_list()
+            except Exception:
+                logging.exception("Failed to process game unregistration data")
+            return
+        elif command == 'changestate':
+            # Change game status (waiting/running)
+            try:
+                self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
+                self._send_game_list()
+            except Exception:
+                logging.exception("Failed to process changestate data")
+            return
 
-        logging.warning("Failed to process stanza type '%s' received from %s",
-                        iq['type'], iq['from'].bare)
-
-    def _iq_board_list_handler(self, iq):
+    def _iq_board_list_request_handler(self, iq):
         """Handle board list requests and responses.
 
         Depreciated once muc_online can send lists/register
         automatically on joining the room.
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
 
-        if iq['type'] == 'get':
+        try:
+            if self.ratings_bot not in self.nicks:
+                self._warn_ratings_bot_offline()
+                return
+
+            new_iq = self.make_iq_get(ito=self.ratings_bot)
+            stanza = BoardListXmppPlugin()
+            stanza.add_command('getleaderboard')
+            stanza.add_recipient(iq['from'])
+            new_iq.set_payload(stanza)
+
             try:
-                self._relay_board_list_request(self.ratings_bot, iq['from'])
+                new_iq.send(block=False, now=True,
+                            callback=self._iq_board_list_result_handler)
             except Exception:
-                logging.exception("Failed to relay the get leaderboard request from %s to the "
-                                  "ratings bot", iq['from'].bare)
-            return
-        elif iq['type'] == 'result':
-            recipient = iq['boardlist']['recipient']
-            self._relay_board_list(iq['boardlist'], recipient)
+                logging.exception("Failed to send get leaderboard request from %s",
+                                  str(self.ratings_bot))
+        except Exception:
+            logging.exception("Failed to relay the get leaderboard request from %s to the "
+                              "ratings bot", iq['from'].bare)
+
+    def _iq_board_list_result_handler(self, iq):
+        """Send the whole leaderboard.
+
+        If no target is passed the leaderboard is broadcasted to all
+        clients.
+        """
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
             return
 
-        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
-                        iq['from'].bare)
+        to = iq['boardlist']['recipient']
+        new_iq = self.make_iq_result(ito=to)
+        new_iq.set_payload(iq['boardlist'])
+
+        if not to:
+            # Rating List
+            for jid in list(self.nicks):
+                new_iq['to'] = jid
+                try:
+                    new_iq.send(block=False, now=True)
+                except Exception:
+                    logging.exception("Failed to send rating list to %s", str(jid))
+        else:
+            try:
+                new_iq.send(block=False, now=True)
+            except Exception:
+                logging.exception("Failed to send leaderboard to %s", str(to))
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients."""
         if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
 
-        if iq['type'] == 'set':
+        try:
+            if self.ratings_bot not in self.nicks:
+                self._warn_ratings_bot_offline()
+                return
+
+            new_iq = self.make_iq_set(ito=self.ratings_bot)
+            stanza = GameReportXmppPlugin()
+            stanza.add_game(iq['gamereport'])
+            stanza.add_sender(iq['from'])
+            new_iq.set_payload(stanza)
+
             try:
-                self._relay_game_report(iq['gamereport'], iq['from'])
+                new_iq.send(block=False, now=True)
             except Exception:
-                logging.exception("Failed to relay game report from %s to the ratings bot",
-                                  iq['from'].bare)
-            return
+                logging.exception("Failed to send game report request to %s",
+                                  str(self.ratings_bot))
+        except Exception:
+            logging.exception("Failed to relay game report from %s to the ratings bot",
+                              iq['from'].bare)
 
-        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
-                        iq['from'].bare)
-
-    def _iq_profile_handler(self, iq):
+    def _iq_profile_request_handler(self, iq):
         """Handle profile requests and responses.
 
-        Depreciated once muc_online can send lists/register
-        automatically on joining the room.
+        Forwards profile requests to the ratings bot and register a
+        callback for its response.
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
             return
 
-        if iq['type'] == 'get':
+        try:
+            if self.ratings_bot not in self.nicks:
+                self._warn_ratings_bot_offline()
+                return
+
+            new_iq = self.make_iq_get(ito=self.ratings_bot)
+            stanza = ProfileXmppPlugin()
+            stanza.add_command(iq['profile']['command'])
+            stanza.add_recipient(iq['from'])
+            new_iq.set_payload(stanza)
+
             try:
-                self._relay_profile_request(self.ratings_bot, iq['from'],
-                                            iq['profile']['command'])
+                new_iq.send(block=False, now=True, callback=self._iq_profile_result_handler)
             except Exception:
-                logging.exception("Failed to relay profile request from %s to the ratings bot",
-                                  iq['from'].bare)
-            return
-        elif iq['type'] == 'result':
-            recipient = iq['profile']['recipient']
-            player = iq['profile']['command']
-            try:
-                self._relay_profile(iq['profile'], player, recipient)
-            except Exception:
-                logging.exception("Failed to relay profile response from the ratings bot to "
-                                  "%s", recipient)
+                logging.exception("Failed to send profile request to %s", str(self.ratings_bot))
+        except Exception:
+            logging.exception("Failed to relay profile request from %s to the ratings bot",
+                              iq['from'].bare)
+
+    def _iq_profile_result_handler(self, iq):
+        """Send the player profile to a specified target.
+
+        Relay a profile result returned by the ratings bot to the
+        player who requested it.
+        """
+        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
             return
 
-        logging.warning("Failed to process stanza type '%s' received from %s", iq['type'],
-                        iq['from'].bare)
+        to = iq['profile']['recipient']
+
+        new_iq = self.make_iq_result(ito=to)
+        new_iq.set_payload(iq['profile'])
+
+        try:
+            new_iq.send(block=False, now=True)
+        except Exception:
+            logging.exception("Failed to send profile to %s", str(to))
+
+    def _warn_ratings_bot_offline(self):
+        """Warn if the ratings bot is offline."""
+        if not self.ratings_bot_warned:
+            logging.warning("Ratings bot '%s' is offline", str(self.ratings_bot))
+            self.ratings_bot_warned = True
 
     def _send_game_list(self, to=None):
         """Send a massive stanza with the whole game list.
@@ -364,30 +425,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             except Exception:
                 logging.exception("Failed to send game list to %s", str(to))
 
-    def _relay_board_list_request(self, recipient, player):
-        """Send a boardListRequest to EcheLOn.
-
-        Arguments:
-            recipient (str): JID of the ratings bot
-            player (sleekxmpp.xmlstream.jid.JID): Player who requested
-                                                  the board list
-
-        """
-        if recipient not in self.nicks:
-            self._warn_ratings_bot_offline()
-            return
-
-        iq = self.make_iq_get(ito=recipient)
-        stanza = BoardListXmppPlugin()
-        stanza.add_command('getleaderboard')
-        stanza.add_recipient(player)
-        iq.set_payload(stanza)
-
-        try:
-            iq.send(block=False, now=True)
-        except Exception:
-            logging.exception("Failed to send get leaderboard request from %s", str(recipient))
-
     def _relay_rating_list_request(self, recipient):
         """Send a ratingListRequest to EcheLOn.
 
@@ -405,94 +442,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         try:
-            iq.send(block=False, now=True)
+            iq.send(block=False, now=True, callback=self._iq_board_list_result_handler)
         except Exception:
             logging.exception("Failed to send rating list request to %s", str(recipient))
-
-    def _relay_profile_request(self, recipient, player, command):
-        """Send a profileRequest to EcheLOn.
-
-        Arguments:
-            recipient (?):  JID of the ratings bot
-            player (sleekxmpp.xmlstream.jid.JID): ?
-            command (?): ?
-
-        """
-        if recipient not in self.nicks:
-            self._warn_ratings_bot_offline()
-            return
-
-        iq = self.make_iq_get(ito=recipient)
-        stanza = ProfileXmppPlugin()
-        stanza.add_command(command)
-        stanza.add_recipient(player)
-        iq.set_payload(stanza)
-
-        try:
-            iq.send(block=False, now=True)
-        except Exception:
-            logging.exception("Failed to send profile request to %s", str(recipient))
-
-    def _relay_game_report(self, data, sender):
-        """Relay a game report to EcheLOn."""
-        to = self.ratings_bot
-        if to not in self.nicks:
-            self._warn_ratings_bot_offline()
-            return
-
-        iq = self.make_iq_set(ito=to)
-        stanza = GameReportXmppPlugin()
-        stanza.add_game(data)
-        stanza.add_sender(sender)
-        iq.set_payload(stanza)
-
-        try:
-            iq.send(block=False, now=True)
-        except Exception:
-            logging.exception("Failed to send game report request to %s", str(to))
-
-    def _relay_board_list(self, board_list, to=None):
-        """Send the whole leaderboard.
-
-        If no target is passed the leaderboard is broadcasted to all
-        clients.
-        """
-        iq = self.make_iq_result(ito=to)
-        iq.set_payload(board_list)
-
-        if not to:
-            # Rating List
-            for jid in list(self.nicks):
-                iq['to'] = jid
-                try:
-                    iq.send(block=False, now=True)
-                except Exception:
-                    logging.exception("Failed to send rating list to %s", str(jid))
-        else:
-            try:
-                iq.send(block=False, now=True)
-            except Exception:
-                logging.exception("Failed to send leaderboard to %s", str(to))
-
-    def _relay_profile(self, data, player, to):  # pylint: disable=unused-argument
-        """Send the player profile to a specified target."""
-        if not to:
-            logging.error("Failed to send profile, target unspecified")
-            return
-
-        iq = self.make_iq_result(ito=to)
-        iq.set_payload(data)
-
-        try:
-            iq.send(block=False, now=True)
-        except Exception:
-            logging.exception("Failed to send profile to %s", str(to))
-
-    def _warn_ratings_bot_offline(self):
-        """Warn if the ratings bot is offline."""
-        if not self.ratings_bot_warned:
-            logging.warning("Ratings bot '%s' is offline", str(self.ratings_bot))
-            self.ratings_bot_warned = True
 
 
 def parse_args(args):
