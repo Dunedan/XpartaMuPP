@@ -176,8 +176,19 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             if jid not in self.nicks:
                 self.nicks[jid] = nick
 
-            if self.ratings_bot in self.nicks:
-                self._relay_rating_list_request(self.ratings_bot)
+            if self.ratings_bot not in self.nicks:
+                self._warn_ratings_bot_offline()
+            else:
+                iq = self.make_iq_get(ito=self.ratings_bot)
+                stanza = BoardListXmppPlugin()
+                stanza.add_command('getratinglist')
+                iq.set_payload(stanza)
+
+                try:
+                    iq.send(block=False, now=True, callback=self._iq_board_list_result_handler)
+                except Exception:
+                    logging.exception("Failed to send rating list request to %s",
+                                      str(self.ratings_bot))
 
             # Send game list to new player.
             self._send_game_list(presence['muc']['jid'])
@@ -450,27 +461,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 iq.send(block=False, now=True)
             except Exception:
                 logging.exception("Failed to send game list to %s", str(to))
-
-    def _relay_rating_list_request(self, recipient):
-        """Send a ratingListRequest to EcheLOn.
-
-        Arguments:
-            recipient (?):  JID of the ratings bot
-
-        """
-        if recipient not in self.nicks:
-            self._warn_ratings_bot_offline()
-            return
-
-        iq = self.make_iq_get(ito=recipient)
-        stanza = BoardListXmppPlugin()
-        stanza.add_command('getratinglist')
-        iq.set_payload(stanza)
-
-        try:
-            iq.send(block=False, now=True, callback=self._iq_board_list_result_handler)
-        except Exception:
-            logging.exception("Failed to send rating list request to %s", str(recipient))
 
 
 def parse_args(args):
