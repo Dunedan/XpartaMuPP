@@ -474,11 +474,11 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         register_stanza_plugin(Iq, ProfileXmppPlugin)
 
         self.register_handler(Callback('Iq Boardlist', StanzaPath('iq@type=get/boardlist'),
-                                       self._iq_board_list_handler, instream=True))
+                                       self._iq_board_list_handler))
         self.register_handler(Callback('Iq GameReport', StanzaPath('iq@type=set/gamereport'),
-                                       self._iq_game_report_handler, instream=True))
+                                       self._iq_game_report_handler))
         self.register_handler(Callback('Iq Profile', StanzaPath('iq@type=get/profile'),
-                                       self._iq_profile_handler, instream=True))
+                                       self._iq_profile_handler))
 
         self.add_event_handler("session_start", self._session_start)
         self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
