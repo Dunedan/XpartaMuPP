@@ -320,8 +320,8 @@ class Leaderboard(object):
         for player in players:
             rating = str(player.rating) if player.rating != -1 else ''
             for jid in list(nicks):
-                if jid.upper() == player.jid.upper():
-                    ratings[nicks[jid]] = {'name': nicks[jid], 'rating': rating}
+                if str(jid).upper() == player.jid.upper():
+                    ratings[nicks[str(jid)]] = {'name': nicks[str(jid)], 'rating': rating}
                     break
         return ratings
 
@@ -505,19 +505,19 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = str(presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
 
         if nick == self.nick:
             return
 
-        if sleekxmpp.jid.JID(jid=jid).resource != '0ad':
+        if jid.resource != '0ad':
             return
 
         if jid not in self.nicks:
             self.nicks[jid] = nick
         logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
-        self.leaderboard.get_or_create_player(jid)
+        self.leaderboard.get_or_create_player(str(jid))
 
     def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
@@ -528,7 +528,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = str(presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
 
         if nick == self.nick:
             return
@@ -545,11 +545,11 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+        if iq['from'].resource not in ['0ad', 'CC']:
             return
 
         command = iq['boardlist']['command']
-        recipient = iq['boardlist']['recipient']
+        recipient = sleekxmpp.jid.JID(jid=iq['boardlist']['recipient'])
         self.leaderboard.get_or_create_player(str(iq['from']))
         if command == 'getleaderboard':
             try:
@@ -572,7 +572,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+        if iq['from'].resource not in ['0ad', 'CC']:
             return
 
         try:
@@ -594,11 +594,11 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource not in ['0ad', 'CC']:
+        if iq['from'].resource not in ['0ad', 'CC']:
             return
 
         command = iq['profile']['command']
-        recipient = iq['profile']['recipient']
+        recipient = sleekxmpp.jid.JID(jid=iq['profile']['recipient'])
         try:
             self._send_profile(iq, command, recipient)
         except Exception:
@@ -613,7 +613,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         Arguments:
             iq (sleekxmpp.stanza.iq.IQ): IQ stanza to reply to
-            recipient (str): Player who requested the leaderboard
+            recipient (sleekxmpp.xmlstream.jid.JID): Player who
+                requested the leaderboard
         """
         board = self.leaderboard.get_board()
 
@@ -628,7 +629,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False)
         except Exception:
-            logging.exception("Failed to send leaderboard to %s", str(iq['to']))
+            logging.exception("Failed to send leaderboard to %s", iq['to'])
 
     def _send_rating_list(self, iq):
         """Send the rating list.
@@ -649,7 +650,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False)
         except Exception:
-            logging.exception("Failed to send rating list to %s", str(iq['to']))
+            logging.exception("Failed to send rating list to %s", iq['to'])
 
     def _send_profile(self, iq, player_nick, recipient):
         """Send the player profile to a specified target.
@@ -658,16 +659,16 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.xmlstream.jid.JID): player who requested the
                                               profile
             player_nick (?): ?
-            recipient (?): ?
+            recipient (sleekxmpp.xmlstream.jid.JID): ?
 
         """
         player_jid = None
         for jid, nick in self.nicks.items():
             if nick == player_nick:
-                player_jid = jid
+                player_jid = str(jid)
                 break
         if not player_jid:
-            player_jid = player_nick + "@" + str(recipient).split('@')[1]
+            player_jid = player_nick + "@" + recipient.domain
 
         try:
             stats = self.leaderboard.get_profile(player_jid)
@@ -690,7 +691,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         try:
             iq.send(block=False)
         except Exception:
-            logging.exception("Failed to send profile to %s", str(iq['to']))
+            logging.exception("Failed to send profile to %s", iq['to'])
 
 
 def parse_args(args):

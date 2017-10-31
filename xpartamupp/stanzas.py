@@ -22,7 +22,7 @@ class BoardListXmppPlugin(ElementBase):
         """Add a recipient to the extension.
 
         Arguments:
-            recipient (str): Recipient to add
+            recipient (sleekxmpp.xmlstream.jid.JID): Recipient to add
         """
         self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
 
@@ -134,7 +134,7 @@ class ProfileXmppPlugin(ElementBase):
         """Add a recipient to the extension.
 
         Arguments:
-            recipient (str): ?
+            recipient (sleekxmpp.xmlstream.jid.JID): Recipient to add
 
         """
         self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))

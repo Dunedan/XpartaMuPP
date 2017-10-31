@@ -42,7 +42,8 @@ class Games(object):
         """Add a game.
 
         Arguments:
-            jid (str): JID of the player who started the game
+            jid (sleekxmpp.xmlstream.jid.JID): JID of the player who
+                started the game
             data (dict): information about the game
 
         Returns:
@@ -64,7 +65,8 @@ class Games(object):
         """Remove a game attached to a JID.
 
         Arguments:
-            jid (str): JID of the player whose game to remove.
+            jid (sleekxmpp.xmlstream.jid.JID): JID of the player whose
+                game to remove.
 
         Returns:
             True if removing the game succeeded, False if not
@@ -92,7 +94,8 @@ class Games(object):
         """Switch game state between running and waiting.
 
         Arguments:
-            jid (str): JID of the player whose game to change
+            jid (sleekxmpp.xmlstream.jid.JID): JID of the player whose
+                game to change
             data (dict): information about the game
 
         Returns:
@@ -143,7 +146,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.nick = nick
         self.ratings_bot_warned = False
 
-        self.ratings_bot = ratings_bot
+        self.ratings_bot = sleekxmpp.jid.JID(jid=ratings_bot)
         self.games = Games()
 
         # Store mapping of nicks and XmppIDs, attached via presence
@@ -190,19 +193,19 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = str(presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
 
         if nick == self.nick:
             return
 
-        if sleekxmpp.jid.JID(jid=jid).resource not in ['0ad', 'CC']:
+        if jid.resource not in ['0ad', 'CC']:
             return
 
         if jid not in self.nicks:
             self.nicks[jid] = nick
 
         # Send game list to new player.
-        self._send_game_list(presence['muc']['jid'])
+        self._send_game_list(jid)
         logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
 
         if self.ratings_bot not in self.nicks:
@@ -218,7 +221,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq.send(block=False, callback=self._iq_board_list_result_handler)
         except Exception:
             logging.exception("Failed to send rating list request to %s",
-                              str(self.ratings_bot))
+                              self.ratings_bot)
 
     def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
@@ -229,7 +232,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = str(presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
 
         if nick == self.nick:
             return
@@ -269,16 +272,16 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
+        if iq['from'].resource != '0ad':
             return
 
         command = iq['gamelist']['command']
         if command == 'register':
-            success = self.games.add_game(str(iq['from']), iq['gamelist']['game'])
+            success = self.games.add_game(iq['from'], iq['gamelist']['game'])
         elif command == 'unregister':
-            success = self.games.remove_game(str(iq['from']))
+            success = self.games.remove_game(iq['from'])
         elif command == 'changestate':
-            success = self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
+            success = self.games.change_game_state(iq['from'], iq['gamelist']['game'])
         else:
             logging.info('Received unknown game command: "%s"', command)
             return
@@ -299,7 +302,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
+        if iq['from'].resource != '0ad':
             return
 
         try:
@@ -317,7 +320,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 new_iq.send(block=False, callback=self._iq_board_list_result_handler)
             except Exception:
                 logging.exception("Failed to send get leaderboard request from %s",
-                                  str(self.ratings_bot))
+                                  self.ratings_bot)
         except Exception:
             logging.exception("Failed to relay the get leaderboard request from %s to the "
                               "ratings bot", iq['from'].bare)
@@ -332,7 +335,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+        if iq['from'].resource != 'CC':
             return
 
         to = iq['boardlist']['recipient']
@@ -346,12 +349,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 try:
                     new_iq.send(block=False)
                 except Exception:
-                    logging.exception("Failed to send rating list to %s", str(jid))
+                    logging.exception("Failed to send rating list to %s", jid)
         else:
             try:
                 new_iq.send(block=False)
             except Exception:
-                logging.exception("Failed to send leaderboard to %s", str(to))
+                logging.exception("Failed to send leaderboard to %s", to)
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients.
@@ -360,7 +363,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
+        if iq['from'].resource != '0ad':
             return
 
         try:
@@ -378,7 +381,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 new_iq.send(block=False)
             except Exception:
                 logging.exception("Failed to send game report request to %s",
-                                  str(self.ratings_bot))
+                                  self.ratings_bot)
         except Exception:
             logging.exception("Failed to relay game report from %s to the ratings bot",
                               iq['from'].bare)
@@ -393,7 +396,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != '0ad':
+        if iq['from'].resource != '0ad':
             return
 
         try:
@@ -410,7 +413,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             try:
                 new_iq.send(block=False, callback=self._iq_profile_result_handler)
             except Exception:
-                logging.exception("Failed to send profile request to %s", str(self.ratings_bot))
+                logging.exception("Failed to send profile request to %s", self.ratings_bot)
         except Exception:
             logging.exception("Failed to relay profile request from %s to the ratings bot",
                               iq['from'].bare)
@@ -425,23 +428,21 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
 
         """
-        if sleekxmpp.jid.JID(jid=iq['from']).resource != 'CC':
+        if iq['from'].resource != 'CC':
             return
 
-        to = iq['profile']['recipient']
-
-        new_iq = self.make_iq_result(ito=to)
+        new_iq = self.make_iq_result(ito=iq['profile']['recipient'])
         new_iq.set_payload(iq['profile'])
 
         try:
             new_iq.send(block=False)
         except Exception:
-            logging.exception("Failed to send profile to %s", str(to))
+            logging.exception("Failed to send profile to %s", iq['profile']['recipient'])
 
     def _warn_ratings_bot_offline(self):
         """Warn if the ratings bot is offline."""
         if not self.ratings_bot_warned:
-            logging.warning("Ratings bot '%s' is offline", str(self.ratings_bot))
+            logging.warning("Ratings bot '%s' is offline", self.ratings_bot)
             self.ratings_bot_warned = True
 
     def _send_game_list(self, to=None):
@@ -470,13 +471,13 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 try:
                     iq.send(block=False)
                 except Exception:
-                    logging.exception("Failed to send game list to %s", str(jid))
+                    logging.exception("Failed to send game list to %s", jid)
         else:
             iq['to'] = to
             try:
                 iq.send(block=False)
             except Exception:
-                logging.exception("Failed to send game list to %s", str(to))
+                logging.exception("Failed to send game list to %s", to)
 
 
 def parse_args(args):
