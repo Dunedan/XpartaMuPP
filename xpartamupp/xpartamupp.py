@@ -215,7 +215,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         try:
-            iq.send(block=False, now=True, callback=self._iq_board_list_result_handler)
+            iq.send(block=False, callback=self._iq_board_list_result_handler)
         except Exception:
             logging.exception("Failed to send rating list request to %s",
                               str(self.ratings_bot))
@@ -314,8 +314,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             new_iq.set_payload(stanza)
 
             try:
-                new_iq.send(block=False, now=True,
-                            callback=self._iq_board_list_result_handler)
+                new_iq.send(block=False, callback=self._iq_board_list_result_handler)
             except Exception:
                 logging.exception("Failed to send get leaderboard request from %s",
                                   str(self.ratings_bot))
@@ -345,12 +344,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             for jid in list(self.nicks):
                 new_iq['to'] = jid
                 try:
-                    new_iq.send(block=False, now=True)
+                    new_iq.send(block=False)
                 except Exception:
                     logging.exception("Failed to send rating list to %s", str(jid))
         else:
             try:
-                new_iq.send(block=False, now=True)
+                new_iq.send(block=False)
             except Exception:
                 logging.exception("Failed to send leaderboard to %s", str(to))
 
@@ -376,7 +375,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             new_iq.set_payload(stanza)
 
             try:
-                new_iq.send(block=False, now=True)
+                new_iq.send(block=False)
             except Exception:
                 logging.exception("Failed to send game report request to %s",
                                   str(self.ratings_bot))
@@ -409,7 +408,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             new_iq.set_payload(stanza)
 
             try:
-                new_iq.send(block=False, now=True, callback=self._iq_profile_result_handler)
+                new_iq.send(block=False, callback=self._iq_profile_result_handler)
             except Exception:
                 logging.exception("Failed to send profile request to %s", str(self.ratings_bot))
         except Exception:
@@ -435,7 +434,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         new_iq.set_payload(iq['profile'])
 
         try:
-            new_iq.send(block=False, now=True)
+            new_iq.send(block=False)
         except Exception:
             logging.exception("Failed to send profile to %s", str(to))
 
@@ -469,13 +468,13 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             for jid in list(self.nicks):
                 iq['to'] = jid
                 try:
-                    iq.send(block=False, now=True)
+                    iq.send(block=False)
                 except Exception:
                     logging.exception("Failed to send game list to %s", str(jid))
         else:
             iq['to'] = to
             try:
-                iq.send(block=False, now=True)
+                iq.send(block=False)
             except Exception:
                 logging.exception("Failed to send game list to %s", str(to))
 

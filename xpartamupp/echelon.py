@@ -626,7 +626,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         try:
-            iq.send(block=False, now=True)
+            iq.send(block=False)
         except Exception:
             logging.exception("Failed to send leaderboard to %s", str(iq['to']))
 
@@ -647,7 +647,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         try:
-            iq.send(block=False, now=True)
+            iq.send(block=False)
         except Exception:
             logging.exception("Failed to send rating list to %s", str(iq['to']))
 
@@ -688,7 +688,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq.set_payload(stanza)
 
         try:
-            iq.send(block=False, now=True)
+            iq.send(block=False)
         except Exception:
             logging.exception("Failed to send profile to %s", str(iq['to']))
 
