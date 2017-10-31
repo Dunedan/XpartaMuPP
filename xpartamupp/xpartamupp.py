@@ -43,22 +43,40 @@ class Games(object):
 
         Arguments:
             jid (str): JID of the player who started the game
-            data (?): information about the game
+            data (dict): information about the game
+
+        Returns:
+            True if adding the game succeeded, False if not
 
         """
-        data['players-init'] = data['players']
-        data['nbp-init'] = data['nbp']
-        data['state'] = 'init'
-        self.games[jid] = data
+        try:
+            data['players-init'] = data['players']
+            data['nbp-init'] = data['nbp']
+            data['state'] = 'init'
+        except (KeyError, ValueError):
+            logging.warning("Received invalid data for add game from 0ad: %s", data)
+            return False
+        else:
+            self.games[jid] = data
+            return True
 
     def remove_game(self, jid):
         """Remove a game attached to a JID.
 
         Arguments:
-            jid (str): JID of the player whoms game to remove.
+            jid (str): JID of the player whose game to remove.
+
+        Returns:
+            True if removing the game succeeded, False if not
 
         """
-        del self.games[jid]
+        try:
+            del self.games[jid]
+        except KeyError:
+            logging.warning("Game for jid %s didn't exist", jid)
+            return False
+        else:
+            return True
 
     def get_all_games(self):
         """Return all games.
@@ -75,25 +93,34 @@ class Games(object):
 
         Arguments:
             jid (str): JID of the player whose game to change
-            data (?): ?
+            data (dict): information about the game
+
+        Returns:
+            True if changing the game state succeeded, False if not
 
         """
         if jid not in self.games:
             logging.warning("Tried to change state for non-existent game %s", jid)
-            return
+            return False
 
-        if self.games[jid]['nbp-init'] > data['nbp']:
-            logging.debug("change game (%s) state from %s to %s", jid,
-                          self.games[jid]['state'], 'waiting')
-            self.games[jid]['state'] = 'waiting'
+        try:
+            if self.games[jid]['nbp-init'] > data['nbp']:
+                logging.debug("change game (%s) state from %s to %s", jid,
+                              self.games[jid]['state'], 'waiting')
+                self.games[jid]['state'] = 'waiting'
+            else:
+                logging.debug("change game (%s) state from %s to %s", jid,
+                              self.games[jid]['state'], 'running')
+                self.games[jid]['state'] = 'running'
+            self.games[jid]['nbp'] = data['nbp']
+            self.games[jid]['players'] = data['players']
+        except (KeyError, ValueError):
+            logging.warning("Received invalid data for change game state from 0ad: %s", data)
+            return False
         else:
-            logging.debug("change game (%s) state from %s to %s", jid,
-                          self.games[jid]['state'], 'running')
-            self.games[jid]['state'] = 'running'
-        self.games[jid]['nbp'] = data['nbp']
-        self.games[jid]['players'] = data['players']
-        if 'startTime' not in self.games[jid]:
-            self.games[jid]['startTime'] = str(round(time.time()))
+            if 'startTime' not in self.games[jid]:
+                self.games[jid]['startTime'] = str(round(time.time()))
+            return True
 
 
 class XpartaMuPP(sleekxmpp.ClientXMPP):
@@ -165,34 +192,33 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
-        if nick != self.nick:
-            if jid not in self.nicks:
-                self.nicks[jid] = nick
-
-        if sleekxmpp.jid.JID(jid=jid).resource != '0ad':
+        if nick == self.nick:
             return
 
-        if nick != self.nick:
-            if jid not in self.nicks:
-                self.nicks[jid] = nick
+        if sleekxmpp.jid.JID(jid=jid).resource not in ['0ad', 'CC']:
+            return
 
-            if self.ratings_bot not in self.nicks:
-                self._warn_ratings_bot_offline()
-            else:
-                iq = self.make_iq_get(ito=self.ratings_bot)
-                stanza = BoardListXmppPlugin()
-                stanza.add_command('getratinglist')
-                iq.set_payload(stanza)
+        if jid not in self.nicks:
+            self.nicks[jid] = nick
 
-                try:
-                    iq.send(block=False, now=True, callback=self._iq_board_list_result_handler)
-                except Exception:
-                    logging.exception("Failed to send rating list request to %s",
-                                      str(self.ratings_bot))
+        # Send game list to new player.
+        self._send_game_list(presence['muc']['jid'])
+        logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
 
-            # Send game list to new player.
-            self._send_game_list(presence['muc']['jid'])
-            logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
+        if self.ratings_bot not in self.nicks:
+            self._warn_ratings_bot_offline()
+            return
+
+        iq = self.make_iq_get(ito=self.ratings_bot)
+        stanza = BoardListXmppPlugin()
+        stanza.add_command('getratinglist')
+        iq.set_payload(stanza)
+
+        try:
+            iq.send(block=False, now=True, callback=self._iq_board_list_result_handler)
+        except Exception:
+            logging.exception("Failed to send rating list request to %s",
+                              str(self.ratings_bot))
 
     def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
@@ -205,21 +231,21 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
-        if nick != self.nick:
-            # Delete any games they were hosting.
-            for game_jid in self.games.get_all_games():
-                if game_jid == jid:
-                    self.games.remove_game(game_jid)
-                    self._send_game_list()
-                    break
-
-            if jid in self.nicks:
-                del self.nicks[jid]
-
-            logging.debug("Client '%s' with nick '%s' disconnected", jid, nick)
-
-        if nick == self.ratings_bot:
+        if nick == self.nick:
+            return
+        elif nick == self.ratings_bot:
             self.ratings_bot_warned = False
+
+        # Delete any game the player was hosting.
+        if self.games.remove_game(jid):
+            self._send_game_list()
+
+        try:
+            del self.nicks[jid]
+        except KeyError:
+            logging.debug("Client \"%s\" didn't exist in nick list", jid)
+
+        logging.debug("Client '%s' with nick '%s' disconnected", jid, nick)
 
     def _muc_message(self, msg):
         """Process messages in the MUC room.
@@ -248,29 +274,20 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         command = iq['gamelist']['command']
         if command == 'register':
-            # Add game
-            try:
-                self.games.add_game(str(iq['from']), iq['gamelist']['game'])
-                self._send_game_list()
-            except Exception:
-                logging.exception("Failed to process game registration data")
-            return
+            success = self.games.add_game(str(iq['from']), iq['gamelist']['game'])
         elif command == 'unregister':
-            # Remove game
-            try:
-                self.games.remove_game(str(iq['from']))
-                self._send_game_list()
-            except Exception:
-                logging.exception("Failed to process game unregistration data")
-            return
+            success = self.games.remove_game(str(iq['from']))
         elif command == 'changestate':
-            # Change game status (waiting/running)
+            success = self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
+        else:
+            logging.info('Received unknown game command: "%s"', command)
+            return
+
+        if success:
             try:
-                self.games.change_game_state(str(iq['from']), iq['gamelist']['game'])
                 self._send_game_list()
             except Exception:
-                logging.exception("Failed to process changestate data")
-            return
+                logging.exception('Failed to send game list after "%s" command', command)
 
     def _iq_board_list_request_handler(self, iq):
         """Handle board list requests and responses.
@@ -509,7 +526,7 @@ def main():
                       args.elo + '@' + args.domain + '/CC')
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
-    xmpp.register_plugin('xep_0045')  # Multi-User Chat    # used
+    xmpp.register_plugin('xep_0045')  # Multi-User Chat
     xmpp.register_plugin('xep_0060')  # PubSub
     xmpp.register_plugin('xep_0199')  # XMPP Ping
 

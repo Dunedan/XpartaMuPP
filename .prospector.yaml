@@ -1,5 +1,5 @@
 ---
-strictness: high
+strictness: veryhigh
 doc-warnings: true
 test-warnings: true
 
@@ -17,8 +17,7 @@ pylint:
     - C0111
     - C0103
     - F0401
-    - R0913
-    - R0914
+    - R0903
     - W0703
 
 pep257:
@@ -29,6 +28,3 @@ pep257:
     - D213
     - D406
     - D407
-
-mccabe:
-  run: false

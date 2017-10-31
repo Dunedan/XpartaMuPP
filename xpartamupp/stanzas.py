@@ -139,8 +139,8 @@ class ProfileXmppPlugin(ElementBase):
         """
         self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
 
-    def add_item(self, player, rating, highest_rating="0", rank="0", total_games_played="0",
-                 wins="0", losses="0"):
+    def add_item(self, player, rating, highest_rating="0",  # pylint: disable=too-many-arguments
+                 rank="0", total_games_played="0", wins="0", losses="0"):
         """Add an item to the extension.
 
         Arguments:

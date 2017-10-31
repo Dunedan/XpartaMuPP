@@ -105,7 +105,7 @@ class Leaderboard(object):
         logging.debug("Created player %s", jid)
         return player
 
-    def _add_game(self, game_report):
+    def _add_game(self, game_report):  # pylint: disable=too-many-locals
         """Add a game to the database.
 
         Add a game to the database and update the data on a
@@ -507,13 +507,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
-        if nick != self.nick:
-            if jid not in self.nicks:
-                self.nicks[jid] = nick
-            logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
+        if nick == self.nick:
+            return
 
         if sleekxmpp.jid.JID(jid=jid).resource != '0ad':
             return
+
+        if jid not in self.nicks:
+            self.nicks[jid] = nick
+        logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
         self.leaderboard.get_or_create_player(jid)
 
@@ -528,9 +530,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         nick = str(presence['muc']['nick'])
         jid = str(presence['muc']['jid'])
 
-        if nick != self.nick:
-            if jid in self.nicks:
-                del self.nicks[jid]
+        if nick == self.nick:
+            return
+
+        try:
+            del self.nicks[jid]
+        except KeyError:
+            logging.debug("Client \"%s\" didn't exist in nick list", jid)
 
     def _iq_board_list_handler(self, iq):
         """Handle incoming leaderboard list requests.
@@ -734,7 +740,7 @@ def main():
                    args.room + '@conference.' + args.domain, args.nickname, leaderboard)
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
-    xmpp.register_plugin('xep_0045')  # Multi-User Chat    # used
+    xmpp.register_plugin('xep_0045')  # Multi-User Chat
     xmpp.register_plugin('xep_0060')  # PubSub
     xmpp.register_plugin('xep_0199')  # XMPP Ping
 
