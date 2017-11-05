@@ -102,7 +102,7 @@ class TestMain(TestCase):
                                                           call('xep_0045'), call('xep_0060'),
                                                           call('xep_0199')], any_order=True)
             xmpp_mock().connect.assert_called_once_with()
-            xmpp_mock().process.assert_called_once_with(threaded=False)
+            xmpp_mock().process.assert_called_once_with()
 
     def test_failing_connect(self):
         """Test failing connect to XMPP server."""

@@ -54,7 +54,7 @@ class Games(object):
             data['players-init'] = data['players']
             data['nbp-init'] = data['nbp']
             data['state'] = 'init'
-        except (KeyError, ValueError):
+        except (KeyError, TypeError, ValueError):
             logging.warning("Received invalid data for add game from 0ad: %s", data)
             return False
         else:

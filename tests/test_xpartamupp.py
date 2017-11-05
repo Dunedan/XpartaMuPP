@@ -23,6 +23,7 @@ from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
 from parameterized import parameterized
+from sleekxmpp.jid import JID
 
 from xpartamupp.xpartamupp import Games, main, parse_args
 
@@ -33,32 +34,31 @@ class TestGames(TestCase):
     def test_add(self):
         """Test successfully adding a game."""
         games = Games()
-        jid = 'player1@domain.tld'
+        jid = JID(jid='player1@domain.tld')
         # TODO: Check how the real format of data looks like
         game_data = {'players': ['player1', 'player2'], 'nbp': 'foo', 'state': 'init'}
-        games.add_game(jid, game_data)
+        self.assertTrue(games.add_game(jid, game_data))
         all_games = games.get_all_games()
         game_data.update({'players-init': game_data['players'], 'nbp-init': game_data['nbp'],
                           'state': game_data['state']})
         self.assertDictEqual(all_games, {jid: game_data})
 
     @parameterized.expand([
-        ('', {}, KeyError),
-        ('player1@domain.tld', {}, KeyError),
-        ('player1@domain.tld', None, TypeError),
-        ('player1@domain.tld', '', TypeError),
+        ('', {}),
+        ('player1@domain.tld', {}),
+        ('player1@domain.tld', None),
+        ('player1@domain.tld', ''),
     ])
-    def test_add_invalid(self, jid, game_data, exception):
+    def test_add_invalid(self, jid, game_data):
         """Test trying to add games with invalid data."""
         games = Games()
-        with self.assertRaises(exception):
-            games.add_game(jid, game_data)
+        self.assertFalse(games.add_game(jid, game_data))
 
     def test_remove(self):
         """Test removal of games."""
         games = Games()
-        jid1 = 'player1@domain.tld'
-        jid2 = 'player3@domain.tld'
+        jid1 = JID(jid='player1@domain.tld')
+        jid2 = JID(jid='player3@domain.tld')
         # TODO: Check how the real format of data looks like
         game_data1 = {'players': ['player1', 'player2'], 'nbp': 'foo', 'state': 'init'}
         games.add_game(jid1, game_data1)
@@ -77,12 +77,11 @@ class TestGames(TestCase):
     def test_remove_unknown(self):
         """Test removal of a game, which doesn't exist."""
         games = Games()
-        jid = 'player1@domain.tld'
+        jid = JID(jid='player1@domain.tld')
         # TODO: Check how the real format of data looks like
         game_data = {'players': ['player1', 'player2'], 'nbp': 'foo', 'state': 'init'}
         games.add_game(jid, game_data)
-        with self.assertRaises(KeyError):
-            games.remove_game('foo')
+        self.assertFalse(games.remove_game('foo'))
 
     def test_change_state(self):
         """Test state changes of a games."""
@@ -154,7 +153,7 @@ class TestMain(TestCase):
                                                           call('xep_0045'), call('xep_0060'),
                                                           call('xep_0199')], any_order=True)
             xmpp_mock().connect.assert_called_once_with()
-            xmpp_mock().process.assert_called_once_with(threaded=False)
+            xmpp_mock().process.assert_called_once_with()
 
     def test_failing_connect(self):
         """Test failing connect to XMPP server."""
