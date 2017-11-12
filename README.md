@@ -168,3 +168,17 @@ To run EcheLOn:
 
     $ python3 EcheLOn.py --domain localhost --login echelon --password XXXXXX \
                          --nickname Ratings --room arena
+
+Run tests
+=========
+
+XpartaMuPP is partially covered by tests. To run the tests execute:
+
+    $ ./setup.py test
+
+If you also when to look into the test coverage, install `coverage` and execute:
+
+    $ coverage setup.py test
+    $ coverage html
+
+Afterwards statistics about the code coverage are stored in the `htmlcov`-subdirectory.
