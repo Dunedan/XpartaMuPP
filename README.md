@@ -182,3 +182,12 @@ If you also when to look into the test coverage, install `coverage` and execute:
     $ coverage html
 
 Afterwards statistics about the code coverage are stored in the `htmlcov`-subdirectory.
+
+Vagrant
+=======
+
+    ```
+    $ sudo apt-get install vagrant
+    $ VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1 vagrant plugin install vagrant-docker-compose
+    $ vagrant up
+    ```
