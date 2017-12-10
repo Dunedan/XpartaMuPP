@@ -1,0 +1,11 @@
+FROM rroemhild/ejabberd:17.09
+
+COPY ./docker/ejabberd.yml.tpl /opt/ejabberd/conf/ejabberd.yml.tpl
+RUN mkdir -p /opt/ejabberd/.ejabberd-modules/sources
+COPY mod_ipstamp /opt/ejabberd/.ejabberd-modules/sources/mod_ipstamp
+# Ugly workaround because COPY doesn't honor USER:
+# https://github.com/moby/moby/issues/6119
+USER root
+RUN chown -R ejabberd:ejabberd /opt/ejabberd/conf/ejabberd.yml.tpl
+RUN chown -R ejabberd:ejabberd /opt/ejabberd/.ejabberd-modules/
+USER ejabberd

@@ -1,0 +1,30 @@
+version: '2'
+services:
+  ejabberd:
+    build:
+      context: .
+      dockerfile: Dockerfile.ejabberd
+    environment:
+      - EJABBERD_STARTTLS=false
+      - EJABBERD_ADMINS=admin@localhost
+      - EJABBERD_USERS=admin@localhost:admin echelon@localhost:XXXXXX xpartamupp@localhost:XXXXXX
+      - EJABBERD_SKIP_MODULES_UPDATE=true
+      - EJABBERD_CONTRIB_MODULES=mod_ipstamp
+      - EJABBERD_LOGLEVEL=5
+    ports:
+      - 3478:3478/udp
+      - 5222:5222
+      - 5280:5280
+    network_mode: host
+  echelon:
+    build:
+      context: .
+      dockerfile: Dockerfile.echelon
+    depends_on:
+      - ejabberd
+  xpartamupp:
+    build:
+      context: .
+      dockerfile: Dockerfile.xpartamupp
+    depends_on:
+      - ejabberd
