@@ -29,6 +29,7 @@ from sleekxmpp.xmlstream.matcher import StanzaPath
 
 from xpartamupp.stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlugin,
                                 ProfileXmppPlugin)
+from xpartamupp.utils import LimitedSizeDict
 
 
 class Games(object):
@@ -152,6 +153,11 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         # Store mapping of nicks and XmppIDs, attached via presence
         # stanza
         self.nicks = {}
+
+        # Store a mapping between received stanza IDs and ones used for
+        # interaction with EcheLOn.
+        # Key is the forwarded ID, value the received one.
+        self.stanza_id_mapping = LimitedSizeDict(size_limit=2**16)
 
         register_stanza_plugin(Iq, GameListXmppPlugin)
         register_stanza_plugin(Iq, BoardListXmppPlugin)
@@ -321,6 +327,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             except Exception:
                 logging.exception("Failed to send get leaderboard request from %s",
                                   self.ratings_bot)
+            self.stanza_id_mapping[new_iq['id']] = iq['id']
         except Exception:
             logging.exception("Failed to relay the get leaderboard request from %s to the "
                               "ratings bot", iq['from'].bare)
@@ -339,7 +346,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             return
 
         to = iq['boardlist']['recipient']
-        new_iq = self.make_iq_result(ito=to)
+        stanza_id = self.stanza_id_mapping.pop(iq['id'], None)
+        new_iq = self.make_iq_result(ito=to, id=stanza_id)
         new_iq.set_payload(iq['boardlist'])
 
         if not to:
@@ -382,6 +390,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             except Exception:
                 logging.exception("Failed to send game report request to %s",
                                   self.ratings_bot)
+            self.stanza_id_mapping[new_iq['id']] = iq['id']
         except Exception:
             logging.exception("Failed to relay game report from %s to the ratings bot",
                               iq['from'].bare)
@@ -414,6 +423,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 new_iq.send(block=False, callback=self._iq_profile_result_handler)
             except Exception:
                 logging.exception("Failed to send profile request to %s", self.ratings_bot)
+            self.stanza_id_mapping[new_iq['id']] = iq['id']
         except Exception:
             logging.exception("Failed to relay profile request from %s to the ratings bot",
                               iq['from'].bare)
@@ -431,7 +441,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if iq['from'].resource != 'CC':
             return
 
-        new_iq = self.make_iq_result(ito=iq['profile']['recipient'])
+        stanza_id = self.stanza_id_mapping.pop(iq['id'], None)
+        new_iq = self.make_iq_result(ito=iq['profile']['recipient'], id=stanza_id)
         new_iq.set_payload(iq['profile'])
 
         try:
