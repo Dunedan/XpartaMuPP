@@ -575,9 +575,13 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if iq['from'].resource not in ['0ad', 'CC']:
             return
 
+        if iq['gamereport']['sender']:
+            sender = iq['gamereport']['sender']
+        else:
+            sender = iq['from']
+
         try:
-            self.report_manager.add_report(iq['gamereport']['sender'],
-                                           iq['gamereport']['game'])
+            self.report_manager.add_report(sender, iq['gamereport']['game'])
             if self.leaderboard.get_last_rated_message() != "":
                 self.send_message(mto=self.room,
                                   mbody=self.leaderboard.get_last_rated_message(),
