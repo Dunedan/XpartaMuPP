@@ -55,14 +55,14 @@ class TestMain(TestCase):
     def test_success(self):
         """Test successful execution."""
         with patch('xpartamupp.lobby_ranking.parse_args') as args_mock, \
-                patch('xpartamupp.lobby_ranking.sqlalchemy') as sqlalchemy_mock, \
+                patch('xpartamupp.lobby_ranking.create_engine') as create_engine_mock, \
                 patch('xpartamupp.lobby_ranking.Base') as declarative_base_mock:
             args_mock.return_value = Mock(action='create',
                                           database_url='sqlite:///lobby_rankings.sqlite3')
             engine_mock = Mock()
-            sqlalchemy_mock.create_engine.return_value = engine_mock
+            create_engine_mock.return_value = engine_mock
             main()
             args_mock.assert_called_once_with(sys.argv[1:])
-            sqlalchemy_mock.create_engine.assert_called_once_with(
+            create_engine_mock.assert_called_once_with(
                 'sqlite:///lobby_rankings.sqlite3')
             declarative_base_mock.metadata.create_all.assert_any_call(engine_mock)

@@ -19,8 +19,7 @@
 import argparse
 import sys
 
-import sqlalchemy
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -165,7 +164,7 @@ def parse_args(args):
 def main():
     """Entry point a console script."""
     args = parse_args(sys.argv[1:])
-    engine = sqlalchemy.create_engine(args.database_url)
+    engine = create_engine(args.database_url)
     if args.action == 'create':
         Base.metadata.create_all(engine)
 
