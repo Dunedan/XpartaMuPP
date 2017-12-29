@@ -531,7 +531,7 @@ def main():
     args = parse_args(sys.argv[1:])
 
     logging.basicConfig(level=args.log_level,
-                        format='%(asctime)s        %(levelname)-8s %(message)s',
+                        format='%(asctime)s %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
     xmpp = XpartaMuPP(args.login + '@' + args.domain + '/CC', args.password,
