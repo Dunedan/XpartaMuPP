@@ -19,6 +19,7 @@
 import argparse
 import logging
 import sys
+from collections import deque
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -340,8 +341,8 @@ class ReportManager(object):
 
         """
         self.leaderboard = leaderboard
-        self.interim_report_tracker = []
-        self.interim_jid_tracker = []
+        self.interim_report_tracker = deque(maxlen=2**12)
+        self.interim_jid_tracker = deque(maxlen=2**12)
 
     def add_report(self, jid, raw_game_report):
         """Add a game to the interface between a raw report and the leaderboard database.
