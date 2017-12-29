@@ -1,30 +1,50 @@
-Introduction
-============
+**This repository is a fork of the [multiplayer tools included in 0ad][1] with the goal to
+significantly improve them and make them easier to use for mod-admins to set up alternative game
+lobbies. All of the changes made in this fork are meant to be ported back again to 0ad
+eventually!**
 
-Some commands assume some apt-get based distribution. `lobby.wildfiregames.com` should be replaced
-by your own domain name (or localhost) in all commands below.
+# Introduction
 
+This README contains details about *XpartaMuPP* and *EcheLOn*, two XMPP-bots, which provide a
+multiplayer lobby and game rating capabilities for 0ad.
 
-Install ejabberd
-================
+## XpartaMuPP - XMPP Multiplayer Game Manager
+
+XpartaMuPP is responsible for managing available multiplayer games so players have an overview what
+kind of games are currently available. It currently also serves as a proxy for EcheLOn and relays
+all rating related requests from players to EcheLOn and vice versa.
+
+## EcheLOn
+
+EcheLOn is responsible for everything related to player ratings like providing access to
+leaderboards and player profiles as well as updating ratings based on game outcomes.
+
+# Setup
+
+The instructions below assume they a run on a Debian-based Linux distribution. XpartaMuPP and
+EcheLOn should work with other distributions as well, but might require different steps for setup.
+
+Whenever `lobby.wildfiregames.com` is mentioned, it should be replaced by your own domain name
+(or `localhost`) in all commands below.
+
+## ejabberd
 
 * Install `ejabberd`:
 
     ```
-    # apt-get install ejabberd
+    $ apt-get install ejabberd
     ```
 
-* Configure it, by setting the domain name (e.g. localhost if you installed it on your development
-  computer) and add an admin user.:
+* Configure it, by setting the domain name (e.g. `localhost` if you installed it on your
+  development computer) and add an admin user.:
 
     ```
-    # dpkg-reconfigure ejabberd
+    $ dpkg-reconfigure ejabberd
     ```
 
 You should now be able to connect to this XMPP server using a normal XMPP client.
 
-Installation of the custom ejabberd module
-======================================
+### Installation of the custom ejabberd module
 
 * Adjust `/etc/ejabberd/ejabberdctl.cfg` and set `CONTRIB_MODULES_PATH` to the directory where
   you want to store `mod_ipstamp`:
@@ -53,8 +73,7 @@ Installation of the custom ejabberd module
 
 If something goes wrong, check `/var/log/ejabberd/ejabberd.log`
 
-Ejabberd configuration
-======================
+### Ejabberd configuration
 
 A web administration interface is available at http://localhost:5280/admin. Use the admin user
 credentials (full JID (user@domain)) to log in. Changing settings there is also possible, but some
@@ -114,8 +133,7 @@ The rest of this section should be done by editing `/etc/ejabberd/ejabberd.yml`.
         admin: allow
         bots: allow
 
-Run XpartaMuPP - XMPP Multiplayer Game Manager
-==============================================
+## XpartaMuPP
 
 You need to have python 3 and SleekXmpp installed (tested for 1.3.1, not compatible with 1.0-beta5).
 You will most likely need to use pip to install 1.3.1, as it is not in most default repositories.
@@ -155,8 +173,7 @@ If everything is fine you should see something along these lines in your console
 
 Congratulations, you are running XpartaMuPP - the 0ad Multiplayer Game Manager.
 
-Run EcheLOn - XMPP Rating Bot
-=============================
+## EcheLOn
 
 This bot can be thought of as a module of XpartaMuPP in that IQs stanzas sent to XpartaMuPP are
 forwarded onto EcheLOn if its corresponding EcheLOn is online and ignored otherwise. This is by no
@@ -166,11 +183,12 @@ EcheLOn handles all aspects of operation related to ELO.
 
 To run EcheLOn:
 
+    ```
     $ python3 EcheLOn.py --domain localhost --login echelon --password XXXXXX \
                          --nickname Ratings --room arena
+    ```
 
-Run tests
-=========
+## Run tests
 
 XpartaMuPP is partially covered by tests. To run the tests execute:
 
@@ -183,11 +201,12 @@ If you also when to look into the test coverage, install `coverage` and execute:
 
 Afterwards statistics about the code coverage are stored in the `htmlcov`-subdirectory.
 
-Vagrant
-=======
+### Vagrant
 
     ```
     $ sudo apt-get install vagrant
     $ VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1 vagrant plugin install vagrant-docker-compose
     $ vagrant up
     ```
+
+[1]: https://trac.wildfiregames.com/browser/ps/trunk/source/tools/XpartaMuPP
