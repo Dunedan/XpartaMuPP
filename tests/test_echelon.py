@@ -23,8 +23,52 @@ from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
 from parameterized import parameterized
+from sqlalchemy import create_engine
 
-from xpartamupp.echelon import main, parse_args
+from xpartamupp.echelon import main, parse_args, Leaderboard
+from xpartamupp.lobby_ranking import Base
+
+
+class TestLeaderboard(TestCase):
+    """Test Leaderboard functionality."""
+
+    def setUp(self):
+        """Set up a leaderboard instance."""
+        db_url = 'sqlite://'
+        engine = create_engine(db_url)
+        Base.metadata.create_all(engine)
+        with patch('xpartamupp.echelon.create_engine') as create_engine_mock:
+            create_engine_mock.return_value = engine
+            self.leaderboard = Leaderboard(db_url)
+
+    def test_create_player(self):
+        """Test creating a new player."""
+        player = self.leaderboard.get_or_create_player('john@localhost')
+        self.assertEqual(player.id, 1)
+        self.assertEqual(player.jid, 'john@localhost')
+        self.assertEqual(player.rating, -1)
+        self.assertEqual(player.highest_rating, None)
+        self.assertEqual(player.games, [])
+        self.assertEqual(player.games_info, [])
+        self.assertEqual(player.games_won, [])
+
+    def test_get_profile_no_player(self):
+        """Test profile retrieval fro not existing player."""
+        profile = self.leaderboard.get_profile('john@localhost')
+        self.assertEqual(profile, dict())
+
+    def test_get_profile_player_without_games(self):
+        """Test profile retrieval for existing player."""
+        self.leaderboard.get_or_create_player('john@localhost')
+        profile = self.leaderboard.get_profile('john@localhost')
+        self.assertDictEqual(profile, {'highestRating': None, 'losses': 0, 'totalGamesPlayed': 0,
+                                       'wins': 0})
+
+
+class TestReportManager(TestCase):
+    """Test ReportManager functionality."""
+
+    pass
 
 
 class TestArgumentParsing(TestCase):

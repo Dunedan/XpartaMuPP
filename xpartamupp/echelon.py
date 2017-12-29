@@ -25,7 +25,7 @@ from sleekxmpp.stanza import Iq
 from sleekxmpp.xmlstream import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
-import sqlalchemy
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from xpartamupp.elo import get_rating_adjustment
@@ -44,9 +44,33 @@ class Leaderboard(object):
         """Initialize the leaderboard."""
         self.last_rated = ""
 
-        engine = sqlalchemy.create_engine(db_url)
+        engine = create_engine(db_url)
         session_factory = sessionmaker(bind=engine)
         self.db = scoped_session(session_factory)
+
+    def get_or_create_player(self, jid):
+        """Get a player from the leaderboard database.
+
+        Get player information from the leaderboard database and
+        create him first, if he doesn't exist yet.
+
+        Arguments:
+            jid (str): JID of the player to get
+
+        Returns:
+            Player instance representing the player specified by the
+            supplied JID
+
+        """
+        player = self.db.query(Player).filter_by(jid=jid).first()
+        if player:
+            return player
+
+        player = Player(jid=jid, rating=-1)
+        self.db.add(player)
+        self.db.commit()
+        logging.debug("Created player %s", jid)
+        return player
 
     def get_profile(self, jid):
         """Get the leaderboard profile for the specified player.
@@ -80,30 +104,6 @@ class Leaderboard(object):
         stats['wins'] = wins
         stats['losses'] = games_played - wins
         return stats
-
-    def get_or_create_player(self, jid):
-        """Get a player from the leaderboard database.
-
-        Get player information from the leaderboard database and
-        create him first, if he doesn't exist yet.
-
-        Arguments:
-            jid (str): JID of the player to get
-
-        Returns:
-            Player instance representing the player specified by the
-            supplied JID
-
-        """
-        player = self.db.query(Player).filter_by(jid=jid).first()
-        if player:
-            return player
-
-        player = Player(jid=jid, rating=-1)
-        self.db.add(player)
-        self.db.commit()
-        logging.debug("Created player %s", jid)
-        return player
 
     def _add_game(self, game_report):  # pylint: disable=too-many-locals
         """Add a game to the database.
@@ -314,7 +314,7 @@ class Leaderboard(object):
 
         """
         ratings = {}
-        player_filter = sqlalchemy.func.upper(Player.jid).in_(
+        player_filter = func.upper(Player.jid).in_(
             [str(jid).upper() for jid in list(nicks)])
         players = self.db.query(Player.jid, Player.rating).filter(player_filter)
         for player in players:
