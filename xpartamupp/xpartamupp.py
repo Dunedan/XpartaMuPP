@@ -132,14 +132,12 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """Initialize XpartaMuPP.
 
         Arguments:
-             sjid (str): JID to use for authentication
              password (str): password to use for authentication
              room (str): XMPP MUC room to join
              nick (str): Nick to use
 
         """
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
-        self.sjid = sjid
         self.room = room
         self.nick = nick
 
