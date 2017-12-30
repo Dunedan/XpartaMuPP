@@ -126,8 +126,8 @@ class Leaderboard(object):
             logging.warning('Received a game report for an unfinished game')
             return None
 
-        players = map(lambda jid: self.db.query(Player).filter(Player.jid.ilike(str(jid))).first(),
-                      dict.keys(game_report['playerStates']))
+        players = self.db.query(Player).filter(Player.jid.in_(
+            dict.keys(game_report['playerStates'])))
 
         winning_jid = [jid for jid, state in game_report['playerStates'].items()
                        if state == 'won'][0]
@@ -176,7 +176,6 @@ class Leaderboard(object):
 
         game = Game(map=game_report['mapName'], duration=int(game_report['timeElapsed']),
                     teamsLocked=bool(game_report['teamsLocked']), matchID=game_report['matchID'])
-        game.players.extend(players)
         game.player_info.extend(player_infos)
         game.winner = self.db.query(Player).filter(Player.jid.ilike(str(winning_jid))).first()
         self.db.add(game)
