@@ -586,7 +586,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             return
 
         if iq['gamereport']['sender']:
-            sender = iq['gamereport']['sender']
+            sender = sleekxmpp.jid.JID(jid=iq['gamereport']['sender'])
         else:
             sender = iq['from']
 

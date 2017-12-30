@@ -81,8 +81,13 @@ class GameReportXmppPlugin(ElementBase):
     def add_sender(self, sender):
         """Add a sender to the extension.
 
+        Only necessary for requests forwarded by XpartaMupp to
+        EcheLOn, as the actual sender will be taken for all
+        others.
+
         Arguments:
-            sender (str): ?
+            sender (sleekxmpp.xmlstream.jid.JID): original sending
+                player of the game report
 
         """
         self.xml.append(ET.fromstring("<sender>%s</sender>" % sender))
