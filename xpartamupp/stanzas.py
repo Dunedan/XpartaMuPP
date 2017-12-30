@@ -6,7 +6,7 @@ class BoardListXmppPlugin(ElementBase):
 
     name = 'query'
     namespace = 'jabber:iq:boardlist'
-    interfaces = {'board', 'command', 'recipient'}
+    interfaces = {'board', 'command'}
     sub_interfaces = interfaces
     plugin_attrib = 'boardlist'
 
@@ -17,14 +17,6 @@ class BoardListXmppPlugin(ElementBase):
             command (str): Command to add
         """
         self.xml.append(ET.fromstring("<command>%s</command>" % command))
-
-    def add_recipient(self, recipient):
-        """Add a recipient to the extension.
-
-        Arguments:
-            recipient (sleekxmpp.xmlstream.jid.JID): Recipient to add
-        """
-        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
 
     def add_item(self, name, rating):
         """Add an item to the extension.
@@ -75,22 +67,8 @@ class GameReportXmppPlugin(ElementBase):
     name = 'report'
     namespace = 'jabber:iq:gamereport'
     plugin_attrib = 'gamereport'
-    interfaces = ('game', 'sender')
+    interfaces = ('game')
     sub_interfaces = interfaces
-
-    def add_sender(self, sender):
-        """Add a sender to the extension.
-
-        Only necessary for requests forwarded by XpartaMupp to
-        EcheLOn, as the actual sender will be taken for all
-        others.
-
-        Arguments:
-            sender (sleekxmpp.xmlstream.jid.JID): original sending
-                player of the game report
-
-        """
-        self.xml.append(ET.fromstring("<sender>%s</sender>" % sender))
 
     def add_game(self, game_report):
         """Add a game to the extension.
@@ -122,7 +100,7 @@ class ProfileXmppPlugin(ElementBase):
 
     name = 'query'
     namespace = 'jabber:iq:profile'
-    interfaces = {'profile', 'command', 'recipient'}
+    interfaces = {'profile', 'command'}
     sub_interfaces = interfaces
     plugin_attrib = 'profile'
 
@@ -134,15 +112,6 @@ class ProfileXmppPlugin(ElementBase):
 
         """
         self.xml.append(ET.fromstring("<command>%s</command>" % command))
-
-    def add_recipient(self, recipient):
-        """Add a recipient to the extension.
-
-        Arguments:
-            recipient (sleekxmpp.xmlstream.jid.JID): Recipient to add
-
-        """
-        self.xml.append(ET.fromstring("<recipient>%s</recipient>" % recipient))
 
     def add_item(self, player, rating, highest_rating="0",  # pylint: disable=too-many-arguments
                  rank="0", total_games_played="0", wins="0", losses="0"):

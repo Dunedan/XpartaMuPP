@@ -27,9 +27,7 @@ from sleekxmpp.xmlstream import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 
-from xpartamupp.stanzas import (BoardListXmppPlugin, GameListXmppPlugin, GameReportXmppPlugin,
-                                ProfileXmppPlugin)
-from xpartamupp.utils import LimitedSizeDict
+from xpartamupp.stanzas import GameListXmppPlugin
 
 
 class Games(object):
@@ -130,7 +128,7 @@ class Games(object):
 class XpartaMuPP(sleekxmpp.ClientXMPP):
     """Main class which handles IQ data and sends new data."""
 
-    def __init__(self, sjid, password, room, nick, ratings_bot):
+    def __init__(self, sjid, password, room, nick):
         """Initialize XpartaMuPP.
 
         Arguments:
@@ -138,7 +136,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
              password (str): password to use for authentication
              room (str): XMPP MUC room to join
              nick (str): Nick to use
-             ratings_bot (str): JID of the ratings bot
 
         """
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
@@ -146,33 +143,16 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.room = room
         self.nick = nick
 
-        self.ratings_bot = sleekxmpp.jid.JID(jid=ratings_bot)
-        self.ratings_bot_warned = False
-
         self.games = Games()
 
         # Store mapping of nicks and XmppIDs, attached via presence
         # stanza
         self.nicks = {}
 
-        # Store a mapping between received stanza IDs and ones used for
-        # interaction with EcheLOn.
-        # Key is the forwarded ID, value the received one.
-        self.stanza_id_mapping = LimitedSizeDict(size_limit=2**16)
-
         register_stanza_plugin(Iq, GameListXmppPlugin)
-        register_stanza_plugin(Iq, BoardListXmppPlugin)
-        register_stanza_plugin(Iq, GameReportXmppPlugin)
-        register_stanza_plugin(Iq, ProfileXmppPlugin)
 
         self.register_handler(Callback('Iq Gamelist', StanzaPath('iq@type=set/gamelist'),
                                        self._iq_game_list_handler))
-        self.register_handler(Callback('Iq Boardlist', StanzaPath('iq@type=get/boardlist'),
-                                       self._iq_board_list_request_handler))
-        self.register_handler(Callback('Iq GameReport', StanzaPath('iq@type=set/gamereport'),
-                                       self._iq_game_report_request_handler))
-        self.register_handler(Callback('Iq Profile', StanzaPath('iq@type=get/profile'),
-                                       self._iq_profile_request_handler))
 
         self.add_event_handler("session_start", self._session_start)
         self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
@@ -215,21 +195,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self._send_game_list(jid)
         logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
 
-        if self.ratings_bot not in self.nicks:
-            self._warn_ratings_bot_offline()
-            return
-
-        iq = self.make_iq_get(ito=self.ratings_bot)
-        stanza = BoardListXmppPlugin()
-        stanza.add_command('getratinglist')
-        iq.set_payload(stanza)
-
-        try:
-            iq.send(block=False, callback=self._iq_board_list_result_handler)
-        except Exception:
-            logging.exception("Failed to send rating list request to %s",
-                              self.ratings_bot)
-
     def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
 
@@ -243,8 +208,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         if nick == self.nick:
             return
-        elif nick == self.ratings_bot:
-            self.ratings_bot_warned = False
 
         # Delete any game the player was hosting.
         if self.games.remove_game(jid):
@@ -298,165 +261,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
                 self._send_game_list()
             except Exception:
                 logging.exception('Failed to send game list after "%s" command', command)
-
-    def _iq_board_list_request_handler(self, iq):
-        """Handle board list requests and responses.
-
-        Deprecated once muc_online can send lists/register
-        automatically on joining the room.
-
-        Arguments:
-            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
-
-        """
-        if iq['from'].resource != '0ad':
-            return
-
-        try:
-            new_iq = self.make_iq_get(ito=self.ratings_bot)
-            stanza = BoardListXmppPlugin()
-            stanza.add_command('getleaderboard')
-            stanza.add_recipient(iq['from'])
-            new_iq.set_payload(stanza)
-
-            try:
-                new_iq.send(block=False, callback=self._iq_board_list_result_handler)
-            except Exception:
-                logging.exception("Failed to send get leaderboard request from %s",
-                                  self.ratings_bot)
-            self.stanza_id_mapping[new_iq['id']] = iq['id']
-        except Exception:
-            logging.exception("Failed to relay the get leaderboard request from %s to the "
-                              "ratings bot", iq['from'].bare)
-
-    def _iq_board_list_result_handler(self, iq):
-        """Send the whole leaderboard.
-
-        If no target is passed the leaderboard is broadcasted to all
-        clients.
-
-        Arguments:
-            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
-
-        """
-        if iq['from'].resource != 'CC':
-            return
-
-        to = iq['boardlist']['recipient']
-        stanza_id = self.stanza_id_mapping.pop(iq['id'], None)
-        new_iq = self.make_iq_result(ito=to, id=stanza_id)
-
-        if iq['type'] == 'error'and iq['error']['condition'] == 'service-unavailable':
-            self._warn_ratings_bot_offline()
-        else:
-            new_iq.set_payload(iq['boardlist'])
-
-        if not to:
-            if iq['type'] != 'error':
-                # Rating List
-                for jid in list(self.nicks):
-                    new_iq['to'] = jid
-                    try:
-                        new_iq.send(block=False)
-                    except Exception:
-                        logging.exception("Failed to send rating list to %s", jid)
-        else:
-            try:
-                new_iq.send(block=False)
-            except Exception:
-                logging.exception("Failed to send leaderboard to %s", to)
-
-    def _iq_game_report_request_handler(self, iq):
-        """Handle end of game reports from clients.
-
-        Arguments:
-            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
-
-        """
-        if iq['from'].resource != '0ad':
-            return
-
-        try:
-            new_iq = self.make_iq_set(ito=self.ratings_bot)
-            stanza = GameReportXmppPlugin()
-            stanza.add_game(iq['gamereport'])
-            stanza.add_sender(iq['from'])
-            new_iq.set_payload(stanza)
-
-            try:
-                new_iq.send(block=False, callback=self._iq_game_report_result_handler)
-            except Exception:
-                logging.exception("Failed to send game report request to %s",
-                                  self.ratings_bot)
-        except Exception:
-            logging.exception("Failed to relay game report from %s to the ratings bot",
-                              iq['from'].bare)
-
-    def _iq_game_report_result_handler(self, iq):
-        """Handle responses for game reports from EcheLOn."""
-        if iq['type'] == 'error' and iq['error']['condition'] == 'service-unavailable':
-            self._warn_ratings_bot_offline()
-
-    def _iq_profile_request_handler(self, iq):
-        """Handle profile requests and responses.
-
-        Forwards profile requests to the ratings bot and register a
-        callback for its response.
-
-        Arguments:
-            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
-
-        """
-        if iq['from'].resource != '0ad':
-            return
-
-        try:
-            new_iq = self.make_iq_get(ito=self.ratings_bot)
-            stanza = ProfileXmppPlugin()
-            stanza.add_command(iq['profile']['command'])
-            stanza.add_recipient(iq['from'])
-            new_iq.set_payload(stanza)
-
-            try:
-                new_iq.send(block=False, callback=self._iq_profile_result_handler)
-            except Exception:
-                logging.exception("Failed to send profile request to %s", self.ratings_bot)
-            self.stanza_id_mapping[new_iq['id']] = iq['id']
-        except Exception:
-            logging.exception("Failed to relay profile request from %s to the ratings bot",
-                              iq['from'].bare)
-
-    def _iq_profile_result_handler(self, iq):
-        """Send the player profile to a specified target.
-
-        Relay a profile result returned by the ratings bot to the
-        player who requested it.
-
-        Arguments:
-            iq (sleekxmpp.stanza.iq.IQ): Received IQ stanza
-
-        """
-        if iq['from'].resource != 'CC':
-            return
-
-        stanza_id = self.stanza_id_mapping.pop(iq['id'], None)
-        new_iq = self.make_iq_result(ito=iq['profile']['recipient'], id=stanza_id)
-
-        if iq['type'] == 'error'and iq['error']['condition'] == 'service-unavailable':
-            self._warn_ratings_bot_offline()
-        else:
-            new_iq.set_payload(iq['profile'])
-
-        try:
-            new_iq.send(block=False)
-        except Exception:
-            logging.exception("Failed to send profile to %s", iq['profile']['recipient'])
-
-    def _warn_ratings_bot_offline(self):
-        """Warn if the ratings bot is offline."""
-        if not self.ratings_bot_warned:
-            logging.warning("Ratings bot '%s' is offline", self.ratings_bot)
-            self.ratings_bot_warned = True
 
     def _send_game_list(self, to=None):
         """Send a massive stanza with the whole game list.
@@ -521,7 +325,6 @@ def parse_args(args):
     parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
     parser.add_argument('-n', '--nickname', help='nickname shown to players', default="WFGbot")
     parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
-    parser.add_argument('-e', '--elo', help='username of the rating bot', default="disabled")
 
     return parser.parse_args(args)
 
@@ -535,8 +338,7 @@ def main():
                         datefmt='%Y-%m-%d %H:%M:%S')
 
     xmpp = XpartaMuPP(args.login + '@' + args.domain + '/CC', args.password,
-                      args.room + '@conference.' + args.domain, args.nickname,
-                      args.elo + '@' + args.domain + '/CC')
+                      args.room + '@conference.' + args.domain, args.nickname)
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
     xmpp.register_plugin('xep_0045')  # Multi-User Chat

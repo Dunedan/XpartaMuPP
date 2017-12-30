@@ -93,30 +93,30 @@ class TestArgumentParsing(TestCase):
     """Test handling of parsing command line parameters."""
 
     @parameterized.expand([
-        ([], Namespace(domain='lobby.wildfiregames.com', elo='disabled', login='xpartamupp',
-                       log_level=30, nickname='WFGbot', password='XXXXXX', room='arena')),
+        ([], Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=30,
+                       nickname='WFGbot', password='XXXXXX', room='arena')),
         (['--debug'],
-         Namespace(domain='lobby.wildfiregames.com', elo='disabled', login='xpartamupp',
-                   log_level=10, nickname='WFGbot', password='XXXXXX', room='arena')),
+         Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=10,
+                   nickname='WFGbot', password='XXXXXX', room='arena')),
         (['--quiet'],
-         Namespace(domain='lobby.wildfiregames.com', elo='disabled', login='xpartamupp',
-                   log_level=40, nickname='WFGbot', password='XXXXXX', room='arena')),
+         Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=40,
+                   nickname='WFGbot', password='XXXXXX', room='arena')),
         (['--verbose'],
-         Namespace(domain='lobby.wildfiregames.com', elo='disabled', login='xpartamupp',
-                   log_level=20, nickname='WFGbot', password='XXXXXX', room='arena')),
+         Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=20,
+                   nickname='WFGbot', password='XXXXXX', room='arena')),
         (['-m', 'lobby.domain.tld'],
-         Namespace(domain='lobby.domain.tld', elo='disabled', login='xpartamupp', log_level=30,
-                   nickname='WFGbot', password='XXXXXX', room='arena')),
+         Namespace(domain='lobby.domain.tld', login='xpartamupp', log_level=30, nickname='WFGbot',
+                   password='XXXXXX', room='arena')),
         (['--domain=lobby.domain.tld'],
-         Namespace(domain='lobby.domain.tld', elo='disabled', login='xpartamupp', log_level=30,
-                   nickname='WFGbot', password='XXXXXX', room='arena')),
+         Namespace(domain='lobby.domain.tld', login='xpartamupp', log_level=30, nickname='WFGbot',
+                   password='XXXXXX', room='arena')),
         (['-m' 'lobby.domain.tld', '-l', 'bot', '-p', '123456', '-n', 'Bot', '-r', 'arena123',
-          '-e', 'RatingsBot', '-v'],
-         Namespace(domain='lobby.domain.tld', elo='RatingsBot', login='bot', log_level=20,
+          '-v'],
+         Namespace(domain='lobby.domain.tld', login='bot', log_level=20,
                    nickname='Bot', password='123456', room='arena123')),
         (['--domain=lobby.domain.tld', '--login=bot', '--password=123456', '--nickname=Bot',
-          '--room=arena123', '--elo=RatingsBot', '--verbose'],
-         Namespace(domain='lobby.domain.tld', elo='RatingsBot', login='bot', log_level=20,
+          '--room=arena123', '--verbose'],
+         Namespace(domain='lobby.domain.tld', login='bot', log_level=20,
                    nickname='Bot', password='123456', room='arena123')),
     ])
     def test_valid(self, cmd_args, expected_args):
@@ -146,7 +146,7 @@ class TestMain(TestCase):
                 patch('xpartamupp.xpartamupp.XpartaMuPP') as xmpp_mock:
             args_mock.return_value = Mock(log_level=30, login='xpartamupp',
                                           domain='lobby.wildfiregames.com', password='XXXXXX',
-                                          room='arena', nickname='WFGbot', elo='disabled')
+                                          room='arena', nickname='WFGbot')
             main()
             args_mock.assert_called_once_with(sys.argv[1:])
             xmpp_mock().register_plugin.assert_has_calls([call('xep_0004'), call('xep_0030'),
@@ -161,7 +161,7 @@ class TestMain(TestCase):
                 patch('xpartamupp.xpartamupp.XpartaMuPP') as xmpp_mock:
             args_mock.return_value = Mock(log_level=30, login='xpartamupp',
                                           domain='lobby.wildfiregames.com', password='XXXXXX',
-                                          room='arena', nickname='WFGbot', elo='disabled')
+                                          room='arena', nickname='WFGbot')
             xmpp_mock().connect.return_value = False
             main()
             args_mock.assert_called_once_with(sys.argv[1:])
