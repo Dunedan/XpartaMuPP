@@ -168,10 +168,9 @@ class Leaderboard(object):
 
         player_infos = []
         for player in players:
-            jid = player.jid
             player_info = PlayerInfo(player=player)
             for report_name in stats:
-                setattr(player_info, report_name, game_report[report_name][jid.lower()])
+                setattr(player_info, report_name, game_report[report_name][player.jid.lower()])
             player_infos.append(player_info)
 
         game = Game(map=game_report['mapName'], duration=int(game_report['timeElapsed']),
@@ -396,14 +395,11 @@ class ReportManager(object):
         """
         processed_game_report = {}
         for key in raw_game_report:
-            if raw_game_report[key].find(",") == -1:
+            if ',' not in raw_game_report[key]:
                 processed_game_report[key] = raw_game_report[key]
             else:
-                split = raw_game_report[key].split(",")
-                # Remove the false split positive.
-                split.pop()
                 stat_to_jid = {}
-                for i, part in enumerate(split):
+                for i, part in enumerate(raw_game_report[key].split(",")[:-1]):
                     stat_to_jid[jids[i]] = part
                 processed_game_report[key] = stat_to_jid
         return processed_game_report
