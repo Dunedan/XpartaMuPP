@@ -211,7 +211,8 @@ extauth_cache: {{ env['EJABBERD_EXTAUTH_CACHE'] }}
 shaper:
   normal: 1000
   fast: 50000
-max_fsm_queue: 1000
+
+max_fsm_queue: 1000000  # ATTENTION: Adjusted setting for testing. Not suitable for productive use!
 
 ###   ====================
 ###   ACCESS CONTROL LISTS
@@ -256,7 +257,7 @@ access:
   c2s_shaper:
     admin: none
     bots: none
-    all: normal
+    all: none  # ATTENTION: Adjusted setting for testing. Not suitable for productive use!
   ## All S2S connections use the "fast" shaper
   s2s_shaper:
     all: fast
