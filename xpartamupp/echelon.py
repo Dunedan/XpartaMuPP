@@ -120,8 +120,10 @@ class Leaderboard(object):
             failed for any reason.
 
         """
-        # Discard any games still in progress.
-        if any(map(lambda state: state == 'active', dict.values(game_report['playerStates']))):
+        # Discard any games still in progress. We shouldn't get
+        # reports from those games anyway.
+        if 'active' in dict.values(game_report['playerStates']):
+            logging.warning('Received a game report for an unfinished game')
             return None
 
         players = map(lambda jid: self.db.query(Player).filter(Player.jid.ilike(str(jid))).first(),
@@ -634,8 +636,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         iq = iq.reply(clear=True)
         stanza = BoardListXmppPlugin()
-        for value in board.values():
-            stanza.add_item(value['name'], value['rating'])
+        for player in board.values():
+            stanza.add_item(player['name'], player['rating'])
         stanza.add_command('boardlist')
         stanza.add_recipient(recipient)
         iq.set_payload(stanza)
