@@ -250,10 +250,8 @@ class Leaderboard(object):
             player1.highest_rating = -1
         if not player2.highest_rating:
             player2.highest_rating = -1
-        if player1.rating > player1.highest_rating:
-            player1.highest_rating = player1.rating
-        if player2.rating > player2.highest_rating:
-            player2.highest_rating = player2.rating
+        player1.highest_rating = max(player1.rating, player1.highest_rating)
+        player2.highest_rating = max(player2.rating, player2.highest_rating)
         self.db.commit()
 
     def get_last_rated_message(self):
@@ -286,23 +284,26 @@ class Leaderboard(object):
             self.last_rated = ""
         return game
 
-    def get_board(self):
-        """Return a mapping between player ratings and JIDs.
+    def get_board(self, limit=100):
+        """Return the ratings of the highest ranked players.
+
+        Arguments:
+            limit (int): Number of players to return
 
         Returns:
-            dict with player JIDs and ratings
+            dict with player JIDs, nicks and ratings
 
         """
-        board = {}
+        ratings = {}
         players = self.db.query(Player).filter(Player.rating != -1) \
-            .order_by(Player.rating.desc()).limit(100).all()
-        for rank, player in enumerate(players):  # pylint: disable=unused-variable
-            board[player.jid] = {'name': '@'.join(player.jid.split('@')[:-1]),
-                                 'rating': str(player.rating)}
-        return board
+            .order_by(Player.rating.desc()).limit(limit).all()
+        for player in players:
+            ratings[player.jid] = {'name': '@'.join(player.jid.split('@')[:-1]),
+                                   'rating': str(player.rating)}
+        return ratings
 
     def get_rating_list(self, nicks):
-        """Return a mapping between online player ratings and JIDs.
+        """Return the ratings of all online players.
 
         The returned dictionary is by nick because the client can't
         link JID to nick conveniently.
@@ -311,12 +312,11 @@ class Leaderboard(object):
             nicks (dict): Players currently online
 
         Returns:
-            dict with player nicks and ratings
+            dict with player JIDs, nicks and ratings
 
         """
         ratings = {}
-        player_filter = func.upper(Player.jid).in_(
-            [str(jid).upper() for jid in list(nicks)])
+        player_filter = func.upper(Player.jid).in_([str(jid).upper() for jid in list(nicks)])
         players = self.db.query(Player.jid, Player.rating).filter(player_filter)
         for player in players:
             rating = str(player.rating) if player.rating != -1 else ''
@@ -614,19 +614,17 @@ class EcheLOn(sleekxmpp.ClientXMPP):
     def _send_leaderboard(self, iq):
         """Send the whole leaderboard.
 
-        If no target is passed the leaderboard is broadcasted to all
-        clients.
-
         Arguments:
             iq (sleekxmpp.stanza.iq.IQ): IQ stanza to reply to
+
         """
-        board = self.leaderboard.get_board()
+        ratings = self.leaderboard.get_board()
 
         iq = iq.reply(clear=True)
         stanza = BoardListXmppPlugin()
-        for player in board.values():
-            stanza.add_item(player['name'], player['rating'])
         stanza.add_command('boardlist')
+        for player in ratings.values():
+            stanza.add_item(player['name'], player['rating'])
         iq.set_payload(stanza)
 
         try:
@@ -635,19 +633,19 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.exception("Failed to send leaderboard to %s", iq['to'])
 
     def _send_rating_list(self, iq):
-        """Send the rating list.
+        """Send the ratings of all online players.
 
         Arguments:
             iq (sleekxmpp.stanza.iq.IQ): IQ stanza to reply to
 
         """
-        rating_list = self.leaderboard.get_rating_list(self.nicks)
+        ratings = self.leaderboard.get_rating_list(self.nicks)
 
         iq = iq.reply(clear=True)
         stanza = BoardListXmppPlugin()
-        for values in rating_list.values():
-            stanza.add_item(values['name'], values['rating'])
         stanza.add_command('ratinglist')
+        for player in ratings.values():
+            stanza.add_item(player['name'], player['rating'])
         iq.set_payload(stanza)
 
         try:
@@ -656,15 +654,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             logging.exception("Failed to send rating list to %s", iq['to'])
 
     def _broadcast_rating_list(self):
-        """Broadcast the rating of all players."""
-        rating_list = self.leaderboard.get_rating_list(self.nicks)
+        """Broadcast the ratings of all online players."""
+        ratings = self.leaderboard.get_rating_list(self.nicks)
 
         for player_jid in self.nicks:
             iq = self.make_iq_result(ito=player_jid)
             stanza = BoardListXmppPlugin()
-            for values in rating_list.values():
-                stanza.add_item(values['name'], values['rating'])
             stanza.add_command('ratinglist')
+            for player in ratings.values():
+                stanza.add_item(player['name'], player['rating'])
             iq.set_payload(stanza)
 
             try:
