@@ -94,21 +94,21 @@ class TestArgumentParsing(TestCase):
 
     @parameterized.expand([
         ([], Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=30,
-                       nickname='WFGbot', password='XXXXXX', room='arena')),
+                       nickname='WFGBot', password='XXXXXX', room='arena')),
         (['--debug'],
          Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=10,
-                   nickname='WFGbot', password='XXXXXX', room='arena')),
+                   nickname='WFGBot', password='XXXXXX', room='arena')),
         (['--quiet'],
          Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=40,
-                   nickname='WFGbot', password='XXXXXX', room='arena')),
+                   nickname='WFGBot', password='XXXXXX', room='arena')),
         (['--verbose'],
          Namespace(domain='lobby.wildfiregames.com', login='xpartamupp', log_level=20,
-                   nickname='WFGbot', password='XXXXXX', room='arena')),
+                   nickname='WFGBot', password='XXXXXX', room='arena')),
         (['-m', 'lobby.domain.tld'],
-         Namespace(domain='lobby.domain.tld', login='xpartamupp', log_level=30, nickname='WFGbot',
+         Namespace(domain='lobby.domain.tld', login='xpartamupp', log_level=30, nickname='WFGBot',
                    password='XXXXXX', room='arena')),
         (['--domain=lobby.domain.tld'],
-         Namespace(domain='lobby.domain.tld', login='xpartamupp', log_level=30, nickname='WFGbot',
+         Namespace(domain='lobby.domain.tld', login='xpartamupp', log_level=30, nickname='WFGBot',
                    password='XXXXXX', room='arena')),
         (['-m' 'lobby.domain.tld', '-l', 'bot', '-p', '123456', '-n', 'Bot', '-r', 'arena123',
           '-v'],
@@ -146,7 +146,7 @@ class TestMain(TestCase):
                 patch('xpartamupp.xpartamupp.XpartaMuPP') as xmpp_mock:
             args_mock.return_value = Mock(log_level=30, login='xpartamupp',
                                           domain='lobby.wildfiregames.com', password='XXXXXX',
-                                          room='arena', nickname='WFGbot')
+                                          room='arena', nickname='WFGBot')
             main()
             args_mock.assert_called_once_with(sys.argv[1:])
             xmpp_mock().register_plugin.assert_has_calls([call('xep_0004'), call('xep_0030'),
@@ -161,7 +161,7 @@ class TestMain(TestCase):
                 patch('xpartamupp.xpartamupp.XpartaMuPP') as xmpp_mock:
             args_mock.return_value = Mock(log_level=30, login='xpartamupp',
                                           domain='lobby.wildfiregames.com', password='XXXXXX',
-                                          room='arena', nickname='WFGbot')
+                                          room='arena', nickname='WFGBot')
             xmpp_mock().connect.return_value = False
             main()
             args_mock.assert_called_once_with(sys.argv[1:])

@@ -235,8 +235,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """
         if msg['mucnick'] != self.nick and self.nick.lower() in msg['body'].lower():
             self.send_message(mto=msg['from'].bare,
-                              mbody="I am the administrative bot in this lobby and cannot "
-                                    "participate in any games.",
+                              mbody="I am just a bot and I'm responsible to ensure that your're"
+                                    "able to see the list of games in here. Aside from that I'm"
+                                    "just chilling.",
                               mtype='groupchat')
 
     def _iq_game_list_handler(self, iq):
@@ -325,7 +326,7 @@ def parse_args(args):
                         default="lobby.wildfiregames.com")
     parser.add_argument('-l', '--login', help='username for login', default="xpartamupp")
     parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
-    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="WFGbot")
+    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="WFGBot")
     parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
 
     return parser.parse_args(args)

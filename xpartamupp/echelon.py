@@ -490,6 +490,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.add_event_handler("session_start", self._session_start)
         self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
         self.add_event_handler("muc::%s::got_offline" % self.room, self._muc_offline)
+        self.add_event_handler("groupchat_message", self._muc_message)
 
     def _session_start(self, event):  # pylint: disable=unused-argument
         """Join MUC channel and announce presence.
@@ -546,6 +547,23 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             del self.nicks[jid]
         except KeyError:
             logging.debug("Client \"%s\" didn't exist in nick list", jid)
+
+    def _muc_message(self, msg):
+        """Process messages in the MUC room.
+
+        Respond to messages highlighting the bots name with an
+        informative message.
+
+        Arguments:
+            msg (sleekxmpp.stanza.message.Message): Received MUC
+                message
+        """
+        if msg['mucnick'] != self.nick and self.nick.lower() in msg['body'].lower():
+            self.send_message(mto=msg['from'].bare,
+                              mbody="I am just a bot and provide the rating functionality for "
+                                    "this lobby. Please don't disturb me, calculating these "
+                                    "ratings is already difficult enough.",
+                              mtype='groupchat')
 
     def _iq_board_list_handler(self, iq):
         """Handle incoming leaderboard list requests.
@@ -737,7 +755,7 @@ def parse_args(args):
                         default="lobby.wildfiregames.com")
     parser.add_argument('-l', '--login', help='username for login', default="EcheLOn")
     parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
-    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="Ratings")
+    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="RatingsBot")
     parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
     parser.add_argument('--database-url', help='URL for the leaderboard database',
                         default="sqlite:///lobby_rankings.sqlite3")

@@ -76,26 +76,26 @@ class TestArgumentParsing(TestCase):
 
     @parameterized.expand([
         ([], Namespace(domain='lobby.wildfiregames.com', login='EcheLOn', log_level=30,
-                       nickname='Ratings', password='XXXXXX', room='arena',
+                       nickname='RatingsBot', password='XXXXXX', room='arena',
                        database_url='sqlite:///lobby_rankings.sqlite3')),
         (['--debug'],
          Namespace(domain='lobby.wildfiregames.com', login='EcheLOn', log_level=10,
-                   nickname='Ratings', password='XXXXXX', room='arena',
+                   nickname='RatingsBot', password='XXXXXX', room='arena',
                    database_url='sqlite:///lobby_rankings.sqlite3')),
         (['--quiet'],
          Namespace(domain='lobby.wildfiregames.com', login='EcheLOn', log_level=40,
-                   nickname='Ratings', password='XXXXXX', room='arena',
+                   nickname='RatingsBot', password='XXXXXX', room='arena',
                    database_url='sqlite:///lobby_rankings.sqlite3')),
         (['--verbose'],
          Namespace(domain='lobby.wildfiregames.com', login='EcheLOn', log_level=20,
-                   nickname='Ratings', password='XXXXXX', room='arena',
+                   nickname='RatingsBot', password='XXXXXX', room='arena',
                    database_url='sqlite:///lobby_rankings.sqlite3')),
         (['-m', 'lobby.domain.tld'],
-         Namespace(domain='lobby.domain.tld', login='EcheLOn', log_level=30, nickname='Ratings',
+         Namespace(domain='lobby.domain.tld', login='EcheLOn', log_level=30, nickname='RatingsBot',
                    password='XXXXXX', room='arena',
                    database_url='sqlite:///lobby_rankings.sqlite3')),
         (['--domain=lobby.domain.tld'],
-         Namespace(domain='lobby.domain.tld', login='EcheLOn', log_level=30, nickname='Ratings',
+         Namespace(domain='lobby.domain.tld', login='EcheLOn', log_level=30, nickname='RatingsBot',
                    password='XXXXXX', room='arena',
                    database_url='sqlite:///lobby_rankings.sqlite3')),
         (['-m' 'lobby.domain.tld', '-l', 'bot', '-p', '123456', '-n', 'Bot', '-r', 'arena123',
@@ -137,7 +137,7 @@ class TestMain(TestCase):
                 patch('xpartamupp.echelon.EcheLOn') as xmpp_mock:
             args_mock.return_value = Mock(log_level=30, login='EcheLOn',
                                           domain='lobby.wildfiregames.com', password='XXXXXX',
-                                          room='arena', nickname='Ratings',
+                                          room='arena', nickname='RatingsBot',
                                           database_url='sqlite:///lobby_rankings.sqlite3')
             main()
             args_mock.assert_called_once_with(sys.argv[1:])
@@ -155,7 +155,7 @@ class TestMain(TestCase):
                 patch('xpartamupp.echelon.EcheLOn') as xmpp_mock:
             args_mock.return_value = Mock(log_level=30, login='EcheLOn',
                                           domain='lobby.wildfiregames.com', password='XXXXXX',
-                                          room='arena', nickname='Ratings',
+                                          room='arena', nickname='RatingsBot',
                                           database_url='sqlite:///lobby_rankings.sqlite3')
             xmpp_mock().connect.return_value = False
             main()
