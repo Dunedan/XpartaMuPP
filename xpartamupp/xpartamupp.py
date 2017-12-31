@@ -277,18 +277,17 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         for jids in games:
             stanza.add_game(games[jids])
 
-        iq = self.make_iq_result()
-        iq.set_payload(stanza)
-
         if not to:
             for jid in list(self.nicks):
-                iq['to'] = jid
+                iq = self.make_iq_result(ito=jid)
+                iq.set_payload(stanza)
                 try:
                     iq.send(block=False)
                 except Exception:
                     logging.exception("Failed to send game list to %s", jid)
         else:
-            iq['to'] = to
+            iq = self.make_iq_result(ito=to)
+            iq.set_payload(stanza)
             try:
                 iq.send(block=False)
             except Exception:
