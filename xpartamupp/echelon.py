@@ -703,6 +703,9 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             if nick == player_nick:
                 player_jid = str(jid)
                 break
+
+        # The player the profile got requested for is not online, so
+        # let's assume the JID contains the nick as local part.
         if not player_jid:
             player_jid = player_nick + "@" + self.sjid.domain + "/0ad"
 
