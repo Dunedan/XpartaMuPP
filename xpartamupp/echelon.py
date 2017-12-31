@@ -657,14 +657,14 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Broadcast the ratings of all online players."""
         ratings = self.leaderboard.get_rating_list(self.nicks)
 
+        stanza = BoardListXmppPlugin()
+        stanza.add_command('ratinglist')
+        for player in ratings.values():
+            stanza.add_item(player['name'], player['rating'])
+
         for player_jid in self.nicks:
             iq = self.make_iq_result(ito=player_jid)
-            stanza = BoardListXmppPlugin()
-            stanza.add_command('ratinglist')
-            for player in ratings.values():
-                stanza.add_item(player['name'], player['rating'])
             iq.set_payload(stanza)
-
             try:
                 iq.send(block=False)
             except Exception:
