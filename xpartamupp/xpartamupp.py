@@ -132,9 +132,10 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """Initialize XpartaMuPP.
 
         Arguments:
+             sjid (str): JID to use for authentication
              password (str): password to use for authentication
              room (str): XMPP MUC room to join
-             nick (str): Nick to use
+             nick (str): Nick to use in MUC
 
         """
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
@@ -143,8 +144,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         self.games = Games()
 
-        # Store mapping of nicks and XmppIDs, attached via presence
-        # stanza
+        # Store mapping of nicks and XMPP IDs of all players in the
+        # MUC room.
         self.nicks = {}
 
         register_stanza_plugin(Iq, GameListXmppPlugin)
@@ -172,6 +173,9 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
     def _muc_online(self, presence):
         """Add joining players to the list of players.
 
+        Also send a list of games to them, so they see which games
+        are currently there.
+
         Arguments:
             presence (sleekxmpp.stanza.presence.Presence): Received
                 presence stanza.
@@ -189,12 +193,14 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if jid not in self.nicks:
             self.nicks[jid] = nick
 
-        # Send game list to new player.
         self._send_game_list(jid)
         logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
 
     def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
+
+        Also remove the potential game this player was hosting, so we
+        don't end up with stale games.
 
         Arguments:
             presence (sleekxmpp.stanza.presence.Presence): Received
@@ -207,7 +213,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if nick == self.nick:
             return
 
-        # Delete any game the player was hosting.
         if self.games.remove_game(jid):
             self._send_game_list()
 
@@ -225,7 +230,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         informative message.
 
         Arguments:
-            msg (?): ?
+            msg (sleekxmpp.stanza.message.Message): Received MUC
+                message
         """
         if msg['mucnick'] != self.nick and self.nick.lower() in msg['body'].lower():
             self.send_message(mto=msg['from'].bare,
@@ -272,7 +278,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """
         games = self.games.get_all_games()
 
-        # Create a stanza with all games
         stanza = GameListXmppPlugin()
         for jids in games:
             stanza.add_game(games[jids])
