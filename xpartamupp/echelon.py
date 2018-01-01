@@ -20,6 +20,7 @@ import argparse
 import difflib
 import logging
 import sys
+from collections import deque
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
@@ -44,7 +45,7 @@ class Leaderboard(object):
 
     def __init__(self, db_url):
         """Initialize the leaderboard."""
-        self.last_rated = ""
+        self.rating_messages = deque()
 
         engine = create_engine(db_url)
         session_factory = sessionmaker(bind=engine)
@@ -241,12 +242,11 @@ class Leaderboard(object):
             result_qualitative = "lost"
         name1 = sleekxmpp.jid.JID(player1.jid).local
         name2 = sleekxmpp.jid.JID(player2.jid).local
-        self.last_rated = "A rated game has ended. %s %s against %s. Rating Adjustment: %s (%s " \
-                          "-> %s) and %s (%s -> %s)." % (name1, result_qualitative, name2, name1,
-                                                         player1.rating,
-                                                         player1.rating + rating_adjustment1,
-                                                         name2, player2.rating,
-                                                         player2.rating + rating_adjustment2)
+        self.rating_messages.append("A rated game has ended. %s %s against %s. Rating "
+                                    "Adjustment: %s (%s -> %s) and %s (%s -> %s)." %
+                                    (name1, result_qualitative, name2, name1, player1.rating,
+                                     player1.rating + rating_adjustment1, name2, player2.rating,
+                                     player2.rating + rating_adjustment2))
         player1.rating += rating_adjustment1
         player2.rating += rating_adjustment2
         if not player1.highest_rating:
@@ -257,16 +257,14 @@ class Leaderboard(object):
         player2.highest_rating = max(player2.rating, player2.highest_rating)
         self.db.commit()
 
-    def get_last_rated_message(self):
-        """Get the string of the last rated game.
-
-        Triggers an update chat for the bot.
+    def get_rating_messages(self):
+        """Get messages announcing rated games.
 
         Returns:
-            str with the a message about a rated game
+            list with the a messages about rated games
 
         """
-        return self.last_rated
+        return self.rating_messages
 
     def add_and_rate_game(self, game_report):
         """Add and rate a game.
@@ -283,8 +281,6 @@ class Leaderboard(object):
         game = self._add_game(game_report)
         if game and self._verify_game(game_report):
             self._rate_game(game)
-        else:
-            self.last_rated = ""
         return game
 
     def get_board(self, limit=100):
@@ -605,14 +601,15 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         try:
             self.report_manager.add_report(iq['from'], iq['gamereport']['game'])
-            if self.leaderboard.get_last_rated_message() != "":
-                self.send_message(mto=self.room,
-                                  mbody=self.leaderboard.get_last_rated_message(),
-                                  mtype="groupchat", mnick=self.nick)
-                self._broadcast_rating_list()
         except Exception:
             logging.exception("Failed to update game statistics for %s", iq['from'].bare)
-        return
+
+        rating_messages = self.leaderboard.get_rating_messages()
+        if rating_messages:
+            while rating_messages:
+                message = rating_messages.popleft()
+                self.send_message(mto=self.room, mbody=message, mtype="groupchat", mnick=self.nick)
+            self._broadcast_rating_list()
 
     def _iq_profile_handler(self, iq):
         """Handle profile requests from clients.
@@ -629,7 +626,6 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         except Exception:
             logging.exception("Failed to send profile about %s to %s", iq['profile']['command'],
                               iq['from'].bare)
-        return
 
     def _send_leaderboard(self, iq):
         """Send the whole leaderboard.
