@@ -132,7 +132,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """Initialize XpartaMuPP.
 
         Arguments:
-             sjid (str): JID to use for authentication
+             sjid (sleekxmpp.jid.JID): JID to use for authentication
              password (str): password to use for authentication
              room (str): XMPP MUC room to join
              nick (str): Nick to use in MUC
@@ -182,7 +182,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(presence['muc']['jid'])
 
         if nick == self.nick:
             return
@@ -208,7 +208,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(presence['muc']['jid'])
 
         if nick == self.nick:
             return
@@ -340,8 +340,8 @@ def main():
                         format='%(asctime)s %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-    xmpp = XpartaMuPP(args.login + '@' + args.domain + '/CC', args.password,
-                      args.room + '@conference.' + args.domain, args.nickname)
+    xmpp = XpartaMuPP(sleekxmpp.jid.JID('%s@%s/%s' % (args.login, args.domain, 'CC')),
+                      args.password, args.room + '@conference.' + args.domain, args.nickname)
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
     xmpp.register_plugin('xep_0045')  # Multi-User Chat

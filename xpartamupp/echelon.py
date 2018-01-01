@@ -57,14 +57,14 @@ class Leaderboard(object):
         create him first, if he doesn't exist yet.
 
         Arguments:
-            jid (str): JID of the player to get
+            jid (sleekxmpp.jid.JID): JID of the player to get
 
         Returns:
             Player instance representing the player specified by the
             supplied JID
 
         """
-        player = self.db.query(Player).filter_by(jid=jid).first()
+        player = self.db.query(Player).filter(Player.jid.ilike(str(jid))).first()
         if player:
             return player
 
@@ -78,7 +78,8 @@ class Leaderboard(object):
         """Get the leaderboard profile for the specified player.
 
         Arguments:
-            jid (str): JID of the player to retrieve the profile for
+            jid (sleekxmpp.jid.JID): JID of the player to retrieve the
+                profile for
 
         Returns:
             dict with statistics about the requested player or None if
@@ -86,7 +87,7 @@ class Leaderboard(object):
 
         """
         stats = {}
-        player = self.db.query(Player).filter(Player.jid.ilike(jid)).first()
+        player = self.db.query(Player).filter(Player.jid.ilike(str(jid))).first()
 
         if not player:
             logging.debug("Couldn't find profile for player %s", jid)
@@ -127,7 +128,7 @@ class Leaderboard(object):
             logging.warning('Received a game report for an unfinished game')
             return None
 
-        players = self.db.query(Player).filter(Player.jid.in_(
+        players = self.db.query(Player).filter(func.lower(Player.jid).in_(
             dict.keys(game_report['playerStates'])))
 
         winning_jid = [jid for jid, state in game_report['playerStates'].items()
@@ -169,9 +170,10 @@ class Leaderboard(object):
 
         player_infos = []
         for player in players:
+            player_jid = sleekxmpp.jid.JID(player.jid)
             player_info = PlayerInfo(player=player)
             for report_name in stats:
-                setattr(player_info, report_name, game_report[report_name][player.jid.lower()])
+                setattr(player_info, report_name, game_report[report_name][player_jid])
             player_infos.append(player_info)
 
         game = Game(map=game_report['mapName'], duration=int(game_report['timeElapsed']),
@@ -237,8 +239,8 @@ class Leaderboard(object):
             result_qualitative = "drew"
         else:
             result_qualitative = "lost"
-        name1 = '@'.join(player1.jid.split('@')[:-1])
-        name2 = '@'.join(player2.jid.split('@')[:-1])
+        name1 = sleekxmpp.jid.JID(player1.jid).local
+        name2 = sleekxmpp.jid.JID(player2.jid).local
         self.last_rated = "A rated game has ended. %s %s against %s. Rating Adjustment: %s (%s " \
                           "-> %s) and %s (%s -> %s)." % (name1, result_qualitative, name2, name1,
                                                          player1.rating,
@@ -297,9 +299,9 @@ class Leaderboard(object):
         """
         ratings = {}
         players = self.db.query(Player).filter(Player.rating != -1) \
-            .order_by(Player.rating.desc()).limit(limit).all()
+            .order_by(Player.rating.desc()).limit(limit)
         for player in players:
-            ratings[player.jid] = {'name': '@'.join(player.jid.split('@')[:-1]),
+            ratings[player.jid] = {'name': sleekxmpp.jid.JID(player.jid).local,
                                    'rating': str(player.rating)}
         return ratings
 
@@ -322,8 +324,8 @@ class Leaderboard(object):
         for player in players:
             rating = str(player.rating) if player.rating != -1 else ''
             for jid in list(nicks):
-                if str(jid).upper() == player.jid.upper():
-                    ratings[nicks[str(jid)]] = {'name': nicks[str(jid)], 'rating': rating}
+                if jid == sleekxmpp.jid.JID(player.jid):
+                    ratings[nicks[str(jid)]] = {'name': nicks[jid], 'rating': rating}
                     break
         return ratings
 
@@ -465,7 +467,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
     def __init__(self, sjid, password, room, nick, leaderboard):
         """Initialize EcheLOn."""
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
-        self.sjid = sleekxmpp.jid.JID(jid=sjid)
+        self.sjid = sleekxmpp.jid.JID(sjid)
         self.room = room
         self.nick = nick
 
@@ -512,7 +514,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(presence['muc']['jid'])
 
         if nick == self.nick:
             return
@@ -524,7 +526,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             self.nicks[jid] = nick
         logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
-        self.leaderboard.get_or_create_player(str(jid))
+        self.leaderboard.get_or_create_player(jid)
 
         self._broadcast_rating_list()
 
@@ -537,7 +539,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         """
         nick = str(presence['muc']['nick'])
-        jid = sleekxmpp.jid.JID(jid=presence['muc']['jid'])
+        jid = sleekxmpp.jid.JID(presence['muc']['jid'])
 
         if nick == self.nick:
             return
@@ -575,7 +577,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             return
 
         command = iq['boardlist']['command']
-        self.leaderboard.get_or_create_player(str(iq['from']))
+        self.leaderboard.get_or_create_player(iq['from'])
         if command == 'getleaderboard':
             try:
                 self._send_leaderboard(iq)
@@ -706,7 +708,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         # The player the profile got requested for is not online, so
         # let's assume the JID contains the nick as local part.
         if not player_jid:
-            player_jid = player_nick + "@" + self.sjid.domain + "/0ad"
+            player_jid = sleekxmpp.jid.JID('%s@%s/%s' % (player_nick, self.sjid.domain, "0ad"))
 
         try:
             stats = self.leaderboard.get_profile(player_jid)
@@ -774,7 +776,7 @@ def main():
                         datefmt='%Y-%m-%d %H:%M:%S')
 
     leaderboard = Leaderboard(args.database_url)
-    xmpp = EcheLOn(args.login + '@' + args.domain + '/CC', args.password,
+    xmpp = EcheLOn(sleekxmpp.jid.JID('%s@%s/%s' % (args.login, args.domain, 'CC')), args.password,
                    args.room + '@conference.' + args.domain, args.nickname, leaderboard)
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
