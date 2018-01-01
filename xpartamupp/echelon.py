@@ -319,14 +319,15 @@ class Leaderboard(object):
 
         """
         ratings = {}
-        player_filter = func.upper(Player.jid).in_([str(jid).upper() for jid in list(nicks)])
-        players = self.db.query(Player.jid, Player.rating).filter(player_filter)
-        for player in players:
-            rating = str(player.rating) if player.rating != -1 else ''
-            for jid in list(nicks):
-                if jid == sleekxmpp.jid.JID(player.jid):
-                    ratings[nicks[str(jid)]] = {'name': nicks[jid], 'rating': rating}
-                    break
+        if nicks:
+            player_filter = func.lower(Player.jid).in_([str(jid).lower() for jid in list(nicks)])
+            players = self.db.query(Player.jid, Player.rating).filter(player_filter)
+            for player in players:
+                rating = str(player.rating) if player.rating != -1 else ''
+                for jid in list(nicks):
+                    if jid == sleekxmpp.jid.JID(player.jid):
+                        ratings[nicks[str(jid)]] = {'name': nicks[jid], 'rating': rating}
+                        break
         return ratings
 
 
