@@ -56,8 +56,10 @@ class GameListXmppPlugin(ElementBase):
         """
         game = self.xml.find('{%s}game' % self.namespace)
         data = {}
-        for key, item in game.items():
-            data[key] = item
+
+        if game is not None:
+            for key, item in game.items():
+                data[key] = item
         return data
 
 
@@ -90,8 +92,10 @@ class GameReportXmppPlugin(ElementBase):
         """
         game = self.xml.find('{%s}game' % self.namespace)
         data = {}
-        for key, item in game.items():
-            data[key] = item
+
+        if game is not None:
+            for key, item in game.items():
+                data[key] = item
         return data
 
 
