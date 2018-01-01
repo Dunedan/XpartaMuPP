@@ -470,8 +470,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         self.leaderboard = leaderboard
         self.report_manager = ReportManager(self.leaderboard)
-        # Store mapping of nicks and JIDs, attached via presence
-        # stanza
+        # Store mapping of nicks and XMPP IDs of all players in the
+        # MUC room.
         self.nicks = {}
 
         register_stanza_plugin(Iq, BoardListXmppPlugin)
