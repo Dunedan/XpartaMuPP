@@ -126,7 +126,7 @@ class Leaderboard(object):
         # Discard any games still in progress. We shouldn't get
         # reports from those games anyway.
         if 'active' in dict.values(game_report['playerStates']):
-            logging.warning('Received a game report for an unfinished game')
+            logging.warning("Received a game report for an unfinished game")
             return None
 
         players = self.db.query(Player).filter(func.lower(Player.jid).in_(
@@ -235,11 +235,11 @@ class Leaderboard(object):
                                                        len(player2.games), len(player1.games),
                                                        result * -1))
         if result == 1:
-            result_qualitative = "won"
+            result_qualitative = 'won'
         elif result == 0:
-            result_qualitative = "drew"
+            result_qualitative = 'drew'
         else:
-            result_qualitative = "lost"
+            result_qualitative = 'lost'
         name1 = sleekxmpp.jid.JID(player1.jid).local
         name2 = sleekxmpp.jid.JID(player2.jid).local
         self.rating_messages.append("A rated game has ended. %s %s against %s. Rating "
@@ -485,10 +485,10 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         self.register_handler(Callback('Iq Profile', StanzaPath('iq@type=get/profile'),
                                        self._iq_profile_handler))
 
-        self.add_event_handler("session_start", self._session_start)
-        self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
-        self.add_event_handler("muc::%s::got_offline" % self.room, self._muc_offline)
-        self.add_event_handler("groupchat_message", self._muc_message)
+        self.add_event_handler('session_start', self._session_start)
+        self.add_event_handler('muc::%s::got_online' % self.room, self._muc_online)
+        self.add_event_handler('muc::%s::got_offline' % self.room, self._muc_offline)
+        self.add_event_handler('groupchat_message', self._muc_message)
 
     def _session_start(self, event):  # pylint: disable=unused-argument
         """Join MUC channel and announce presence.
@@ -608,7 +608,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if rating_messages:
             while rating_messages:
                 message = rating_messages.popleft()
-                self.send_message(mto=self.room, mbody=message, mtype="groupchat", mnick=self.nick)
+                self.send_message(mto=self.room, mbody=message, mtype='groupchat', mnick=self.nick)
             self._broadcast_rating_list()
 
     def _iq_profile_handler(self, iq):
@@ -705,7 +705,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         # The player the profile got requested for is not online, so
         # let's assume the JID contains the nick as local part.
         if not player_jid:
-            player_jid = sleekxmpp.jid.JID('%s@%s/%s' % (player_nick, self.sjid.domain, "0ad"))
+            player_jid = sleekxmpp.jid.JID('%s@%s/%s' % (player_nick, self.sjid.domain, '0ad'))
 
         try:
             stats = self.leaderboard.get_profile(player_jid)
@@ -744,22 +744,22 @@ def parse_args(args):
                                      description="EcheLOn - XMPP Rating Bot")
 
     log_settings = parser.add_mutually_exclusive_group()
-    log_settings.add_argument('-q', '--quiet', help='only log errors', action='store_const',
+    log_settings.add_argument('-q', '--quiet', help="only log errors", action='store_const',
                               dest='log_level', const=logging.ERROR)
-    log_settings.add_argument('-d', '--debug', help='log debug messages', action='store_const',
+    log_settings.add_argument('-d', '--debug', help="log debug messages", action='store_const',
                               dest='log_level', const=logging.DEBUG)
-    log_settings.add_argument('-v', '--verbose', help='log more informative messages',
+    log_settings.add_argument('-v', '--verbose', help="log more informative messages",
                               action='store_const', dest='log_level', const=logging.INFO)
     log_settings.set_defaults(log_level=logging.WARNING)
 
-    parser.add_argument('-m', '--domain', help='XMPP server to connect to',
-                        default="lobby.wildfiregames.com")
-    parser.add_argument('-l', '--login', help='username for login', default="EcheLOn")
-    parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
-    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="RatingsBot")
-    parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
-    parser.add_argument('--database-url', help='URL for the leaderboard database',
-                        default="sqlite:///lobby_rankings.sqlite3")
+    parser.add_argument('-m', '--domain', help="XMPP server to connect to",
+                        default='lobby.wildfiregames.com')
+    parser.add_argument('-l', '--login', help="username for login", default='EcheLOn')
+    parser.add_argument('-p', '--password', help="password for login", default='XXXXXX')
+    parser.add_argument('-n', '--nickname', help="nickname shown to players", default='RatingsBot')
+    parser.add_argument('-r', '--room', help="XMPP MUC room to join", default='arena')
+    parser.add_argument('--database-url', help="URL for the leaderboard database",
+                        default='sqlite:///lobby_rankings.sqlite3')
 
     return parser.parse_args(args)
 

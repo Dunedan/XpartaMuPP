@@ -25,7 +25,7 @@ class LimitedSizeDict(OrderedDict):
 
         Set the limit to which size the dict should be able to grow.
         """
-        self.size_limit = kwargs.pop("size_limit", None)
+        self.size_limit = kwargs.pop('size_limit', None)
         OrderedDict.__init__(self, *args, **kwargs)
         self._check_size_limit()
 

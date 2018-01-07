@@ -153,10 +153,10 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         self.register_handler(Callback('Iq Gamelist', StanzaPath('iq@type=set/gamelist'),
                                        self._iq_game_list_handler))
 
-        self.add_event_handler("session_start", self._session_start)
-        self.add_event_handler("muc::%s::got_online" % self.room, self._muc_online)
-        self.add_event_handler("muc::%s::got_offline" % self.room, self._muc_offline)
-        self.add_event_handler("groupchat_message", self._muc_message)
+        self.add_event_handler('session_start', self._session_start)
+        self.add_event_handler('muc::%s::got_online' % self.room, self._muc_online)
+        self.add_event_handler('muc::%s::got_offline' % self.room, self._muc_offline)
+        self.add_event_handler('groupchat_message', self._muc_message)
 
     def _session_start(self, event):  # pylint: disable=unused-argument
         """Join MUC channel and announce presence.
@@ -314,20 +314,20 @@ def parse_args(args):
                                      description="XpartaMuPP - XMPP Multiplayer Game Manager")
 
     log_settings = parser.add_mutually_exclusive_group()
-    log_settings.add_argument('-q', '--quiet', help='only log errors', action='store_const',
+    log_settings.add_argument('-q', '--quiet', help="only log errors", action='store_const',
                               dest='log_level', const=logging.ERROR)
-    log_settings.add_argument('-d', '--debug', help='log debug messages', action='store_const',
+    log_settings.add_argument('-d', '--debug', help="log debug messages", action='store_const',
                               dest='log_level', const=logging.DEBUG)
-    log_settings.add_argument('-v', '--verbose', help='log more informative messages',
+    log_settings.add_argument('-v', '--verbose', help="log more informative messages",
                               action='store_const', dest='log_level', const=logging.INFO)
     log_settings.set_defaults(log_level=logging.WARNING)
 
-    parser.add_argument('-m', '--domain', help='XMPP server to connect to',
-                        default="lobby.wildfiregames.com")
-    parser.add_argument('-l', '--login', help='username for login', default="xpartamupp")
-    parser.add_argument('-p', '--password', help='password for login', default="XXXXXX")
-    parser.add_argument('-n', '--nickname', help='nickname shown to players', default="WFGBot")
-    parser.add_argument('-r', '--room', help='XMPP MUC room to join', default="arena")
+    parser.add_argument('-m', '--domain', help="XMPP server to connect to",
+                        default='lobby.wildfiregames.com')
+    parser.add_argument('-l', '--login', help="username for login", default='xpartamupp')
+    parser.add_argument('-p', '--password', help="password for login", default='XXXXXX')
+    parser.add_argument('-n', '--nickname', help="nickname shown to players", default='WFGBot')
+    parser.add_argument('-r', '--room', help="XMPP MUC room to join", default='arena')
 
     return parser.parse_args(args)
 

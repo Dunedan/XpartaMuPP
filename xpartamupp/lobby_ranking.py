@@ -157,7 +157,7 @@ def parse_args(args):
     parser.add_argument('action', help='Action to apply to the database',
                         choices=['create'])
     parser.add_argument('--database-url', help='URL for the leaderboard database',
-                        default="sqlite:///lobby_rankings.sqlite3")
+                        default='sqlite:///lobby_rankings.sqlite3')
     return parser.parse_args(args)
 
 
