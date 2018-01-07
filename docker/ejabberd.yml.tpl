@@ -44,6 +44,7 @@ listen:
     module: ejabberd_c2s
     {%- if env['EJABBERD_STARTTLS'] == "true" %}
     starttls_required: true
+    tls_compression: true
     {%- endif %}
     protocol_options:
       - "no_sslv3"
@@ -60,6 +61,7 @@ listen:
     {%- if env.get('EJABBERD_DHPARAM', false) == "true" %}
     dhfile: "/opt/ejabberd/ssl/dh.pem"
     {%- endif %}
+    zlib: true
   -
     port: 5269
     module: ejabberd_s2s_in
