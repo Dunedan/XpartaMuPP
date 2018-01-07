@@ -28,6 +28,7 @@ from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
 
 from xpartamupp.stanzas import GameListXmppPlugin
+from xpartamupp.utils import LimitedSizeDict
 
 
 class Games(object):
@@ -35,7 +36,7 @@ class Games(object):
 
     def __init__(self):
         """Initialize with empty games."""
-        self.games = {}
+        self.games = LimitedSizeDict(size_limit=2**7)
 
     def add_game(self, jid, data):
         """Add a game.
