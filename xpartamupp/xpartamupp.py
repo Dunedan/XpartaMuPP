@@ -159,7 +159,7 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         """Join MUC channel and announce presence.
 
         Arguments:
-            event (?): ?
+            event (dict): empty dummy dict
 
         """
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)

@@ -491,7 +491,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Join MUC channel and announce presence.
 
         Arguments:
-            event (?): ?
+            event (dict): empty dummy dict
 
         """
         self.plugin['xep_0045'].joinMUC(self.room, self.nick)
@@ -697,8 +697,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         Arguments:
             iq (sleekxmpp.jid.JID): player who requested the profile
-            player_nick (?): The nick of the player to get the profile
-                for
+            player_nick (str): The nick of the player to get the
+                profile for
 
         """
         jid_str = self.plugin['xep_0045'].getJidProperty(self.room, player_nick, 'jid')

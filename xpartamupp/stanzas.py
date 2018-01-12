@@ -57,7 +57,7 @@ class GameListXmppPlugin(ElementBase):
         """Add a game to the extension.
 
         Arguments:
-            data (?): ?
+            data (dict): game data to add
         """
         self.xml.append(ET.Element('game', data))
 
@@ -124,14 +124,14 @@ class ProfileXmppPlugin(ElementBase):
     sub_interfaces = interfaces
     plugin_attrib = 'profile'
 
-    def add_command(self, command):
+    def add_command(self, player_nick):
         """Add a command to the extension.
 
         Arguments:
-            command (str): ?
+            player_nick (str): the nick of the player the profile is about
 
         """
-        self.xml.append(ET.fromstring('<command>%s</command>' % command))
+        self.xml.append(ET.fromstring('<command>%s</command>' % player_nick))
 
     def add_item(self, player, rating, highest_rating='0',  # pylint: disable=too-many-arguments
                  rank='0', total_games_played='0', wins='0', losses='0'):
