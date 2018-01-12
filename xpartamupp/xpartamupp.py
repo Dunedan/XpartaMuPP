@@ -42,8 +42,8 @@ class Games(object):
         """Add a game.
 
         Arguments:
-            jid (sleekxmpp.xmlstream.jid.JID): JID of the player who
-                started the game
+            jid (sleekxmpp.jid.JID): JID of the player who started the
+                game
             data (dict): information about the game
 
         Returns:
@@ -65,8 +65,8 @@ class Games(object):
         """Remove a game attached to a JID.
 
         Arguments:
-            jid (sleekxmpp.xmlstream.jid.JID): JID of the player whose
-                game to remove.
+            jid (sleekxmpp.jid.JID): JID of the player whose game to
+                remove.
 
         Returns:
             True if removing the game succeeded, False if not
@@ -94,8 +94,8 @@ class Games(object):
         """Switch game state between running and waiting.
 
         Arguments:
-            jid (sleekxmpp.xmlstream.jid.JID): JID of the player whose
-                game to change
+            jid (sleekxmpp.jid.JID): JID of the player whose game to
+                change
             data (dict): information about the game
 
         Returns:
@@ -264,8 +264,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         clients.
 
         Arguments:
-            to (sleekxmpp.xmlstream.jid.JID): Player to send the game
-                list to. If None, the game list will be broadcasted
+            to (sleekxmpp.jid.JID): Player to send the game list to.
+                If None, the game list will be broadcasted
         """
         games = self.games.get_all_games()
 
