@@ -470,9 +470,6 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
         self.leaderboard = leaderboard
         self.report_manager = ReportManager(self.leaderboard)
-        # Store mapping of nicks and XMPP IDs of all players in the
-        # MUC room.
-        self.nicks = {}
 
         register_stanza_plugin(Iq, BoardListXmppPlugin)
         register_stanza_plugin(Iq, GameReportXmppPlugin)
@@ -519,13 +516,11 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if jid.resource != '0ad':
             return
 
-        if jid not in self.nicks:
-            self.nicks[jid] = nick
-        logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
-
         self.leaderboard.get_or_create_player(jid)
 
         self._broadcast_rating_list()
+
+        logging.debug("Client '%s' connected with a nick of '%s'.", jid, nick)
 
     def _muc_offline(self, presence):
         """Remove leaving players from the list of players.
@@ -541,10 +536,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         if nick == self.nick:
             return
 
-        try:
-            del self.nicks[jid]
-        except KeyError:
-            logging.debug("Client \"%s\" didn't exist in nick list", jid)
+        logging.debug("Client '%s' with nick '%s' disconnected", jid, nick)
 
     def _muc_message(self, msg):
         """Process messages in the MUC room.
@@ -655,7 +647,14 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             iq (sleekxmpp.stanza.iq.IQ): IQ stanza to reply to
 
         """
-        ratings = self.leaderboard.get_rating_list(self.nicks)
+        nicks = {}
+        for nick in self.plugin['xep_0045'].getRoster(self.room):
+            if nick == self.nick:
+                continue
+            jid_str = self.plugin['xep_0045'].getJidProperty(self.room, nick, 'jid')
+            jid = sleekxmpp.jid.JID(jid_str)
+            nicks[jid] = nick
+        ratings = self.leaderboard.get_rating_list(nicks)
 
         iq = iq.reply(clear=True)
         stanza = BoardListXmppPlugin()
@@ -671,20 +670,27 @@ class EcheLOn(sleekxmpp.ClientXMPP):
 
     def _broadcast_rating_list(self):
         """Broadcast the ratings of all online players."""
-        ratings = self.leaderboard.get_rating_list(self.nicks)
+        nicks = {}
+        for nick in self.plugin['xep_0045'].getRoster(self.room):
+            if nick == self.nick:
+                continue
+            jid_str = self.plugin['xep_0045'].getJidProperty(self.room, nick, 'jid')
+            jid = sleekxmpp.jid.JID(jid_str)
+            nicks[jid] = nick
+        ratings = self.leaderboard.get_rating_list(nicks)
 
         stanza = BoardListXmppPlugin()
         stanza.add_command('ratinglist')
         for player in ratings.values():
             stanza.add_item(player['name'], player['rating'])
 
-        for player_jid in self.nicks:
-            iq = self.make_iq_result(ito=player_jid)
+        for jid in nicks:
+            iq = self.make_iq_result(ito=jid)
             iq.set_payload(stanza)
             try:
                 iq.send(block=False)
             except Exception:
-                logging.exception("Failed to send rating list to %s", player_jid)
+                logging.exception("Failed to send rating list to %s", jid)
 
     def _send_profile(self, iq, player_nick):
         """Send the player profile to a specified target.
@@ -696,11 +702,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
                 for
 
         """
-        player_jid = None
-        for jid, nick in self.nicks.items():
-            if nick == player_nick:
-                player_jid = str(jid)
-                break
+        jid_str = self.plugin['xep_0045'].getJidProperty(self.room, player_nick, 'jid')
+        player_jid = sleekxmpp.jid.JID(jid_str) if jid_str else None
 
         # The player the profile got requested for is not online, so
         # let's assume the JID contains the nick as local part.

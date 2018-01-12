@@ -145,10 +145,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         self.games = Games()
 
-        # Store mapping of nicks and XMPP IDs of all players in the
-        # MUC room.
-        self.nicks = {}
-
         register_stanza_plugin(Iq, GameListXmppPlugin)
 
         self.register_handler(Callback('Iq Gamelist', StanzaPath('iq@type=set/gamelist'),
@@ -191,10 +187,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         if jid.resource not in ['0ad', 'CC']:
             return
 
-        if jid not in self.nicks:
-            self.nicks[jid] = nick
-
         self._send_game_list(jid)
+
         logging.debug("Client '%s' connected with a nick '%s'.", jid, nick)
 
     def _muc_offline(self, presence):
@@ -216,11 +210,6 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
 
         if self.games.remove_game(jid):
             self._send_game_list()
-
-        try:
-            del self.nicks[jid]
-        except KeyError:
-            logging.debug("Client \"%s\" didn't exist in nick list", jid)
 
         logging.debug("Client '%s' with nick '%s' disconnected", jid, nick)
 
@@ -285,7 +274,11 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
             stanza.add_game(games[jids])
 
         if not to:
-            for jid in list(self.nicks):
+            for nick in self.plugin['xep_0045'].getRoster(self.room):
+                if nick == self.nick:
+                    continue
+                jid_str = self.plugin['xep_0045'].getJidProperty(self.room, nick, 'jid')
+                jid = sleekxmpp.jid.JID(jid_str)
                 iq = self.make_iq_result(ito=jid)
                 iq.set_payload(stanza)
                 try:
