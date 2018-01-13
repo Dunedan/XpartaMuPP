@@ -270,8 +270,8 @@ class XpartaMuPP(sleekxmpp.ClientXMPP):
         games = self.games.get_all_games()
 
         stanza = GameListXmppPlugin()
-        for jids in games:
-            stanza.add_game(games[jids])
+        for jid in games:
+            stanza.add_game(games[jid])
 
         if not to:
             for nick in self.plugin['xep_0045'].getRoster(self.room):
