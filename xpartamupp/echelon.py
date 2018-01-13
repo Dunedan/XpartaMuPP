@@ -573,13 +573,11 @@ class EcheLOn(sleekxmpp.ClientXMPP):
             except Exception:
                 logging.exception("Failed to process get leaderboard request from %s",
                                   iq['from'].bare)
-            return
         elif command == 'getratinglist':
             try:
                 self._send_rating_list(iq)
             except Exception:
                 logging.exception("Failed to send the rating list to %s", iq['from'])
-            return
 
     def _iq_game_report_handler(self, iq):
         """Handle end of game reports from clients.
@@ -696,7 +694,7 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         """Send the player profile to a specified target.
 
         Arguments:
-            iq (sleekxmpp.jid.JID): player who requested the profile
+            iq (sleekxmpp.stanza.iq.IQ): IQ stanza to reply to
             player_nick (str): The nick of the player to get the
                 profile for
 
