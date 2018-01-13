@@ -464,6 +464,8 @@ class EcheLOn(sleekxmpp.ClientXMPP):
     def __init__(self, sjid, password, room, nick, leaderboard):
         """Initialize EcheLOn."""
         sleekxmpp.ClientXMPP.__init__(self, sjid, password)
+        self.whitespace_keepalive = False
+
         self.sjid = sleekxmpp.jid.JID(sjid)
         self.room = room
         self.nick = nick
@@ -778,8 +780,8 @@ def main():
     xmpp.register_plugin('xep_0030')  # Service Discovery
     xmpp.register_plugin('xep_0004')  # Data Forms
     xmpp.register_plugin('xep_0045')  # Multi-User Chat
-    xmpp.register_plugin('xep_0060')  # PubSub
-    xmpp.register_plugin('xep_0199')  # XMPP Ping
+    xmpp.register_plugin('xep_0060')  # Publish-Subscribe
+    xmpp.register_plugin('xep_0199', {'keepalive': True})  # XMPP Ping
 
     if xmpp.connect():
         xmpp.process()

@@ -151,7 +151,8 @@ class TestMain(TestCase):
             args_mock.assert_called_once_with(sys.argv[1:])
             xmpp_mock().register_plugin.assert_has_calls([call('xep_0004'), call('xep_0030'),
                                                           call('xep_0045'), call('xep_0060'),
-                                                          call('xep_0199')], any_order=True)
+                                                          call('xep_0199', {'keepalive': True})],
+                                                         any_order=True)
             xmpp_mock().connect.assert_called_once_with()
             xmpp_mock().process.assert_called_once_with()
 
@@ -167,6 +168,7 @@ class TestMain(TestCase):
             args_mock.assert_called_once_with(sys.argv[1:])
             xmpp_mock().register_plugin.assert_has_calls([call('xep_0004'), call('xep_0030'),
                                                           call('xep_0045'), call('xep_0060'),
-                                                          call('xep_0199')], any_order=True)
+                                                          call('xep_0199', {'keepalive': True})],
+                                                         any_order=True)
             xmpp_mock().connect.assert_called_once_with()
             xmpp_mock().process.assert_not_called()
