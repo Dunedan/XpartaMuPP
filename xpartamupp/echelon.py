@@ -298,7 +298,7 @@ class Leaderboard(object):
             .order_by(Player.rating.desc()).limit(limit)
         for player in players:
             ratings[player.jid] = {'name': sleekxmpp.jid.JID(player.jid).local,
-                                   'rating': str(player.rating)}
+                                   'rating': player.rating}
         return ratings
 
     def get_rating_list(self, nicks):
@@ -716,11 +716,11 @@ class EcheLOn(sleekxmpp.ClientXMPP):
         iq = iq.reply(clear=True)
         stanza = ProfileXmppPlugin()
         if stats:
-            stanza.add_item(player_nick, str(stats['rating']), str(stats['highestRating']),
-                            str(stats['rank']), str(stats['totalGamesPlayed']), str(stats['wins']),
-                            str(stats['losses']))
+            stanza.add_item(player_nick, stats['rating'], stats['highestRating'],
+                            stats['rank'], stats['totalGamesPlayed'], stats['wins'],
+                            stats['losses'])
         else:
-            stanza.add_item(player_nick, str(-2))
+            stanza.add_item(player_nick, -2)
         stanza.add_command(player_nick)
         iq.set_payload(stanza)
 

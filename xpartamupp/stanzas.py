@@ -39,9 +39,9 @@ class BoardListXmppPlugin(ElementBase):
 
         Argumnets:
             name (str): Name of the player to add
-            rating (str): Rating of the player to add
+            rating (int): Rating of the player to add
         """
-        self.xml.append(ET.Element('board', {'name': name, 'rating': rating}))
+        self.xml.append(ET.Element('board', {'name': name, 'rating': str(rating)}))
 
 
 class GameListXmppPlugin(ElementBase):
@@ -133,22 +133,22 @@ class ProfileXmppPlugin(ElementBase):
         """
         self.xml.append(ET.fromstring('<command>%s</command>' % player_nick))
 
-    def add_item(self, player, rating, highest_rating='0',  # pylint: disable=too-many-arguments
-                 rank='0', total_games_played='0', wins='0', losses='0'):
+    def add_item(self, player, rating, highest_rating=0,  # pylint: disable=too-many-arguments
+                 rank=0, total_games_played=0, wins=0, losses=0):
         """Add an item to the extension.
 
         Arguments:
             player (str): Name of the player
-            rating (str): Current rating of the player
-            highest_rating (str): Highest rating the player had
-            rank (str): Rank of the player
-            total_games_played (str): Total number of games the player
+            rating (int): Current rating of the player
+            highest_rating (int): Highest rating the player had
+            rank (int): Rank of the player
+            total_games_played (int): Total number of games the player
                                       played
-            wins (str): Number of won games the player had
-            losses (str): Number of lost games the player had
+            wins (int): Number of won games the player had
+            losses (int): Number of lost games the player had
         """
-        item_xml = ET.Element('profile', {'player': player, 'rating': rating,
-                                          'highestRating': highest_rating, 'rank': rank,
-                                          'totalGamesPlayed': total_games_played, 'wins': wins,
-                                          'losses': losses})
+        item_xml = ET.Element('profile', {'player': player, 'rating': str(rating),
+                                          'highestRating': str(highest_rating), 'rank': str(rank),
+                                          'totalGamesPlayed': str(total_games_played),
+                                          'wins': str(wins), 'losses': str(losses)})
         self.xml.append(item_xml)
