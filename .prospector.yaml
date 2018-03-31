@@ -6,8 +6,6 @@ test-warnings: true
 pep8:
   options:
     max-line-length: 99
-  disable:
-    - E722
 
 pylint:
   options:
