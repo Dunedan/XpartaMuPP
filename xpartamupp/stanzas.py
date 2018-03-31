@@ -85,7 +85,7 @@ class GameReportXmppPlugin(ElementBase):
     name = 'report'
     namespace = 'jabber:iq:gamereport'
     plugin_attrib = 'gamereport'
-    interfaces = ('game')
+    interfaces = 'game'
     sub_interfaces = interfaces
 
     def add_game(self, game_report):

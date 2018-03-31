@@ -24,9 +24,9 @@ from collections import deque
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
-from sleekxmpp.xmlstream import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
+from sleekxmpp.xmlstream.stanzabase import register_stanza_plugin
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import scoped_session, sessionmaker
 
@@ -69,7 +69,7 @@ class Leaderboard(object):
         if player:
             return player
 
-        player = Player(jid=jid, rating=-1)
+        player = Player(jid=str(jid), rating=-1)
         self.db.add(player)
         self.db.commit()
         logging.debug("Created player %s", jid)

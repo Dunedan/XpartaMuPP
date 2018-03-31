@@ -81,7 +81,7 @@ class TestGames(TestCase):
         # TODO: Check how the real format of data looks like
         game_data = {'players': ['player1', 'player2'], 'nbp': 'foo', 'state': 'init'}
         games.add_game(jid, game_data)
-        self.assertFalse(games.remove_game('foo'))
+        self.assertFalse(games.remove_game(JID('foo@bar.tld')))
 
     def test_change_state(self):
         """Test state changes of a games."""

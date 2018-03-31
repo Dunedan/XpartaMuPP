@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 setup(
     name='XpartaMuPP',
     version='0.23',
-    description=('Multiplayer lobby bots for 0ad'),
+    description='Multiplayer lobby bots for 0ad',
     packages=find_packages(),
     entry_points={
         'console_scripts': [

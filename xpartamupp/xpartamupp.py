@@ -23,9 +23,9 @@ import sys
 
 import sleekxmpp
 from sleekxmpp.stanza import Iq
-from sleekxmpp.xmlstream import register_stanza_plugin
 from sleekxmpp.xmlstream.handler import Callback
 from sleekxmpp.xmlstream.matcher import StanzaPath
+from sleekxmpp.xmlstream.stanzabase import register_stanza_plugin
 
 from xpartamupp.stanzas import GameListXmppPlugin
 from xpartamupp.utils import LimitedSizeDict

@@ -23,6 +23,7 @@ from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
 from parameterized import parameterized
+from sleekxmpp.jid import JID
 from sqlalchemy import create_engine
 
 from xpartamupp.echelon import main, parse_args, Leaderboard
@@ -43,7 +44,7 @@ class TestLeaderboard(TestCase):
 
     def test_create_player(self):
         """Test creating a new player."""
-        player = self.leaderboard.get_or_create_player('john@localhost')
+        player = self.leaderboard.get_or_create_player(JID('john@localhost'))
         self.assertEqual(player.id, 1)
         self.assertEqual(player.jid, 'john@localhost')
         self.assertEqual(player.rating, -1)
@@ -54,13 +55,13 @@ class TestLeaderboard(TestCase):
 
     def test_get_profile_no_player(self):
         """Test profile retrieval fro not existing player."""
-        profile = self.leaderboard.get_profile('john@localhost')
+        profile = self.leaderboard.get_profile(JID('john@localhost'))
         self.assertEqual(profile, dict())
 
     def test_get_profile_player_without_games(self):
         """Test profile retrieval for existing player."""
-        self.leaderboard.get_or_create_player('john@localhost')
-        profile = self.leaderboard.get_profile('john@localhost')
+        self.leaderboard.get_or_create_player(JID('john@localhost'))
+        profile = self.leaderboard.get_profile(JID('john@localhost'))
         self.assertDictEqual(profile, {'highestRating': None, 'losses': 0, 'totalGamesPlayed': 0,
                                        'wins': 0})
 
