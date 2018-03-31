@@ -1,4 +1,4 @@
-FROM rroemhild/ejabberd:17.09
+FROM rroemhild/ejabberd:18.01
 
 COPY ./docker/ejabberd.yml.tpl /opt/ejabberd/conf/ejabberd.yml.tpl
 RUN mkdir -p /opt/ejabberd/.ejabberd-modules/sources
