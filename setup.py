@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""setup.py for 0ad XMPP lobby bots."""
+
 from setuptools import find_packages, setup
 
 setup(

@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Tests for the ELO-implementation."""
+
 from unittest import TestCase
 
 from parameterized import parameterized

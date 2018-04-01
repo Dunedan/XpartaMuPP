@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Implementation of the ELO-rating algorithm for 0ad games."""
+
 # Difference between two ratings such that it is regarded as a "sure
 # win" for the higher player. No points are gained or lost for such a
 # game.

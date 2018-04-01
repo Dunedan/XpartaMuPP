@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+"""0ad-specific XMPP-stanzas."""
+
 from sleekxmpp.xmlstream import ElementBase, ET
 
 

@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with 0 A.D.  If not, see <http://www.gnu.org/licenses/>.
 
+"""0ad XMPP-bot responsible for managing game listings."""
+
 import argparse
 import logging
 import time

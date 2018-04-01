@@ -16,6 +16,8 @@
 
 # pylint: disable=no-self-use
 
+"""Tests for the database schema."""
+
 import sys
 
 from argparse import Namespace

@@ -16,6 +16,8 @@
 
 # pylint: disable=no-self-use
 
+"""Tests for EcheLOn."""
+
 import sys
 
 from argparse import Namespace
