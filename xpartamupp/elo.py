@@ -69,25 +69,3 @@ def get_rating_adjustment(rating, opponent_rating, games_played,
     elif result == -1:
         return round(min(0.0, rating_adjustment))
     return round(rating_adjustment)
-
-# Inflation test - A slightly negative is better than a slightly positive
-# Lower rated players stop playing more often than higher rated players
-# Uncomment to test.
-# In this example, two evenly matched players play for 150000 games.
-#
-# from random import randrange
-# r1start = 1600
-# r2start = 1600
-# r1 = r1start
-# r2 = r2start
-# for x in range(0, 150000):
-#     res = randrange(3)-1 # How often one wins against the other
-#     if res >= 1:
-#         res = 1
-#     elif res <= -1:
-#         res = -1
-#     r1gain = get_rating_adjustment(r1, r2, 20, 20, res)
-#     r2gain = get_rating_adjustment(r2, r1, 20, 20, -1 * res)
-#     r1 += r1gain
-#     r2 += r2gain
-# print(str(r1) + " " + str(r2) + "   :   " + str(r1 + r2-r1start - r2start))
