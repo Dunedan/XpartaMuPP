@@ -38,7 +38,14 @@ ANTI_INFLATION = 0.015
 
 def get_rating_adjustment(rating, opponent_rating, games_played,
                           opponent_games_played, result):  # pylint: disable=unused-argument
-    """Calculate the rating adjustment after a 1v1 game finishes using simplified ELO.
+    """Calculate the rating adjustment after rated 1v1 games.
+
+     The rating adjustment is calculated using a simplified
+     ELO-algorithm.
+
+     The given implementation doesn't work for negative ratings below
+     -2199. This is a known limitation which is currently considered
+     to be not relevant in day-to-day use.
 
     Arguments:
         rating (int): Rating of the first player before the game.
@@ -56,10 +63,14 @@ def get_rating_adjustment(rating, opponent_rating, games_played,
              the first player
 
     """
-    player_volatility = (min(games_played, VOLATILITY_CONSTANT) / VOLATILITY_CONSTANT + 0.25) / \
-        1.25
+    if rating < -2199 or opponent_rating < -2199:
+        raise ValueError('Too small rating given: rating: %i, opponent rating: %i' %
+                         (rating, opponent_rating))
+
     rating_k_factor = 50.0 * (min(rating, ELO_K_FACTOR_CONSTANT_RATING) /
                               ELO_K_FACTOR_CONSTANT_RATING + 1.0) / 2.0
+    player_volatility = (min(max(0, games_played), VOLATILITY_CONSTANT) /
+                         VOLATILITY_CONSTANT + 0.25) / 1.25
     volatility = rating_k_factor * player_volatility
     rating_difference = opponent_rating - rating
     rating_adjustment = (rating_difference + result * ELO_SURE_WIN_DIFFERENCE) / volatility - \

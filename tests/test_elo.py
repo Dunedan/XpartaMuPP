@@ -18,9 +18,12 @@
 
 from unittest import TestCase
 
+from hypothesis import example, given
+from hypothesis.strategies import integers, just, one_of
 from parameterized import parameterized
 
-from xpartamupp.elo import get_rating_adjustment, ELO_K_FACTOR_CONSTANT_RATING
+from xpartamupp.elo import (get_rating_adjustment, ANTI_INFLATION, ELO_K_FACTOR_CONSTANT_RATING,
+                            ELO_SURE_WIN_DIFFERENCE, VOLATILITY_CONSTANT)
 
 
 class TestELO(TestCase):
@@ -57,39 +60,51 @@ class TestELO(TestCase):
         ([1000, 1400, 0, 0, 1], 137),
         ([1000, 1400, 0, 0, 0], 55),
         ([1000, 1400, 0, 0, -1], -28),
+        ([2200, 2300, 0, 0, 1], 70),
+        ([2200, 2300, 0, 0, 0], 10),
+        ([2200, 2300, 0, 0, -1], -50),
     ])
     def test_valid_adjustments(self, args, expected_adjustment):
         """Test correctness of valid rating adjustments."""
         self.assertEqual(get_rating_adjustment(*args), expected_adjustment)
 
-    @parameterized.expand([
-        ([ELO_K_FACTOR_CONSTANT_RATING, ELO_K_FACTOR_CONSTANT_RATING, 0, 0, 1], 60),
-        ([ELO_K_FACTOR_CONSTANT_RATING, ELO_K_FACTOR_CONSTANT_RATING, 0, 0, -1], -60),
-        ([ELO_K_FACTOR_CONSTANT_RATING, ELO_K_FACTOR_CONSTANT_RATING, 0, 0, 0], 0),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 300, ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, 1], 60),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 300, ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, -1], -60),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 300, ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, 0], 0),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 200, ELO_K_FACTOR_CONSTANT_RATING, 0, 0, 1], 40),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 200, ELO_K_FACTOR_CONSTANT_RATING, 0, 0, -1], -80),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 200, ELO_K_FACTOR_CONSTANT_RATING, 0, 0, 0], -20),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 500, ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, 1], 40),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 500, ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, -1], -80),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 500, ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, 0], -20),
-        ([ELO_K_FACTOR_CONSTANT_RATING, ELO_K_FACTOR_CONSTANT_RATING + 200, 0, 0, 1], 80),
-        ([ELO_K_FACTOR_CONSTANT_RATING, ELO_K_FACTOR_CONSTANT_RATING + 200, 0, 0, -1], -40),
-        ([ELO_K_FACTOR_CONSTANT_RATING, ELO_K_FACTOR_CONSTANT_RATING + 200, 0, 0, 0], 20),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 300, ELO_K_FACTOR_CONSTANT_RATING + 500, 0, 0, 1], 80),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 300, ELO_K_FACTOR_CONSTANT_RATING + 500, 0, 0, -1], -40),
-        ([ELO_K_FACTOR_CONSTANT_RATING + 300, ELO_K_FACTOR_CONSTANT_RATING + 500, 0, 0, 0], 20),
-    ])
-    def test_constant_rating(self, args, expected_adjustment):
+    @given(integers(min_value=ELO_K_FACTOR_CONSTANT_RATING),
+           integers(max_value=ELO_SURE_WIN_DIFFERENCE - 1), integers(), integers(),
+           integers(min_value=-1, max_value=1))
+    @example(ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, 0, 1)
+    def test_constant_rating(self, rating_player1, difference_player2, played_games_player1,
+                             played_games_player2, result):
         """Test that points gained are constant above a threshold."""
-        self.assertEqual(get_rating_adjustment(*args), expected_adjustment)
+        volatility = 50.0 * (min(max(0, played_games_player1), VOLATILITY_CONSTANT) /
+                             VOLATILITY_CONSTANT + 0.25) / 1.25
+        rating_adjustment = (difference_player2 + result * ELO_SURE_WIN_DIFFERENCE) / volatility \
+            - ANTI_INFLATION
+        if result == 1:
+            expected_adjustment = max(0.0, rating_adjustment)
+        elif result == -1:
+            expected_adjustment = min(0.0, rating_adjustment)
+        else:
+            expected_adjustment = rating_adjustment
 
-    @parameterized.expand([
-        ([1600, 1000, 0, 0, 1], 0),
-        ([1000, 1600, 0, 0, -1], 0),
-    ])
-    def test_sure_wins(self, args, expected_adjustment):
-        """Test that sure wins don't grant points."""
-        self.assertEqual(get_rating_adjustment(*args), expected_adjustment)
+        self.assertEqual(get_rating_adjustment(rating_player1, rating_player1 + difference_player2,
+                                               played_games_player1, played_games_player2, result),
+                         round(expected_adjustment))
+
+    @given(integers(), integers(min_value=ELO_SURE_WIN_DIFFERENCE), integers(),
+           integers(), one_of(just(-1), just(1)))
+    @example(1000, ELO_SURE_WIN_DIFFERENCE, 0, 0, 1)
+    def test_sure_win(self, rating_player1, difference_player2, played_games_player1,
+                      played_games_player2, result):
+        """Test behavior if winning player has >600 points more.
+
+        In this case the winning player shouldn't gain points, as it
+        was a "sure win" and the loosing player shouldn't loose
+        points.
+        """
+        self.assertEqual(get_rating_adjustment(rating_player1,
+                                               rating_player1 - difference_player2 * result,
+                                               played_games_player1, played_games_player2, result),
+                         0)
+        self.assertEqual(get_rating_adjustment(rating_player1 - difference_player2 * result,
+                                               rating_player1, played_games_player2,
+                                               played_games_player1, result * -1), 0)

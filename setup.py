@@ -23,6 +23,7 @@ setup(
     ],
     tests_require=[
         'coverage',
+        'hypothesis',
         'parameterized',
     ],
     classifiers=[

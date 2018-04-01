@@ -230,12 +230,17 @@ class Leaderboard(object):
         if player2.rating == -1:
             player2.rating = LEADERBOARD_DEFAULT_RATING
 
-        rating_adjustment1 = int(get_rating_adjustment(player1.rating, player2.rating,
-                                                       len(player1.games), len(player2.games),
-                                                       result))
-        rating_adjustment2 = int(get_rating_adjustment(player2.rating, player1.rating,
-                                                       len(player2.games), len(player1.games),
-                                                       result * -1))
+        try:
+            rating_adjustment1 = int(get_rating_adjustment(player1.rating, player2.rating,
+                                                           len(player1.games), len(player2.games),
+                                                           result))
+            rating_adjustment2 = int(get_rating_adjustment(player2.rating, player1.rating,
+                                                           len(player2.games), len(player1.games),
+                                                           result * -1))
+        except ValueError:
+            rating_adjustment1 = 0
+            rating_adjustment2 = 0
+
         if result == 1:
             result_qualitative = 'won'
         elif result == 0:
