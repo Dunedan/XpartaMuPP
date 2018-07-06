@@ -1,6 +1,6 @@
 ---
 -   repo: git://github.com/pre-commit/pre-commit-hooks
-    sha: v0.9.2
+    sha: v1.3.0
     hooks:
     -   id: check-added-large-files
     -   id: check-case-conflict
@@ -22,7 +22,7 @@
     -   id: prospector
 
 -   repo: git://github.com/Lucas-C/pre-commit-hooks
-    sha: v1.1.1
+    sha: v1.1.5
     hooks:
     -   id: forbid-crlf
     -   id: forbid-tabs
