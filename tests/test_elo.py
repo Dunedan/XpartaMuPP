@@ -18,8 +18,8 @@
 
 from unittest import TestCase
 
-from hypothesis import example, given
-from hypothesis.strategies import integers, just, one_of
+from hypothesis import assume, example, given
+from hypothesis import strategies as st
 from parameterized import parameterized
 
 from xpartamupp.elo import (get_rating_adjustment, ANTI_INFLATION, ELO_K_FACTOR_CONSTANT_RATING,
@@ -68,9 +68,10 @@ class TestELO(TestCase):
         """Test correctness of valid rating adjustments."""
         self.assertEqual(get_rating_adjustment(*args), expected_adjustment)
 
-    @given(integers(min_value=ELO_K_FACTOR_CONSTANT_RATING),
-           integers(max_value=ELO_SURE_WIN_DIFFERENCE - 1), integers(), integers(),
-           integers(min_value=-1, max_value=1))
+    @given(st.integers(min_value=ELO_K_FACTOR_CONSTANT_RATING),
+           st.integers(min_value=-2099, max_value=ELO_SURE_WIN_DIFFERENCE - 1), st.integers(),
+           st.integers(),
+           st.integers(min_value=-1, max_value=1))
     @example(ELO_K_FACTOR_CONSTANT_RATING + 300, 0, 0, 0, 1)
     def test_constant_rating(self, rating_player1, difference_player2, played_games_player1,
                              played_games_player2, result):
@@ -90,21 +91,44 @@ class TestELO(TestCase):
                                                played_games_player1, played_games_player2, result),
                          round(expected_adjustment))
 
-    @given(integers(), integers(min_value=ELO_SURE_WIN_DIFFERENCE), integers(),
-           integers(), one_of(just(-1), just(1)))
-    @example(1000, ELO_SURE_WIN_DIFFERENCE, 0, 0, 1)
-    def test_sure_win(self, rating_player1, difference_player2, played_games_player1,
-                      played_games_player2, result):
-        """Test behavior if winning player has >600 points more.
+    @given(st.data())
+    def test_sure_win(self, data):
+        """Test behavior if winning player 1 has >600 points more.
+
+        In this case the winning player shouldn't gain points, as it
+        was a "sure win" and the loosing player shouldn't loose
+        points.
+        """
+        rating_player1 = data.draw(st.integers(min_value=-1599))
+        difference_player2 = data.draw(st.integers(min_value=ELO_SURE_WIN_DIFFERENCE))
+        assume(rating_player1 - difference_player2 > -2200)
+        played_games_player1 = data.draw(st.integers())
+        played_games_player2 = data.draw(st.integers())
+
+        self.assertEqual(get_rating_adjustment(rating_player1,
+                                               rating_player1 - difference_player2,
+                                               played_games_player1, played_games_player2, 1),
+                         0)
+        self.assertEqual(get_rating_adjustment(rating_player1 - difference_player2,
+                                               rating_player1, played_games_player2,
+                                               played_games_player1, -1), 0)
+
+    @given(st.integers(min_value=-2199), st.integers(min_value=ELO_SURE_WIN_DIFFERENCE),
+           st.integers(),
+           st.integers())
+    @example(1000, ELO_SURE_WIN_DIFFERENCE, 0, 0)
+    def test_sure_loss(self, rating_player1, difference_player2, played_games_player1,
+                       played_games_player2):
+        """Test behavior if winning player 2 has >600 points more.
 
         In this case the winning player shouldn't gain points, as it
         was a "sure win" and the loosing player shouldn't loose
         points.
         """
         self.assertEqual(get_rating_adjustment(rating_player1,
-                                               rating_player1 - difference_player2 * result,
-                                               played_games_player1, played_games_player2, result),
+                                               rating_player1 - difference_player2 * -1,
+                                               played_games_player1, played_games_player2, -1),
                          0)
-        self.assertEqual(get_rating_adjustment(rating_player1 - difference_player2 * result,
+        self.assertEqual(get_rating_adjustment(rating_player1 - difference_player2 * -1,
                                                rating_player1, played_games_player2,
-                                               played_games_player1, result * -1), 0)
+                                               played_games_player1, 1), 0)
