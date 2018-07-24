@@ -132,3 +132,19 @@ class TestELO(TestCase):
         self.assertEqual(get_rating_adjustment(rating_player1 - difference_player2 * -1,
                                                rating_player1, played_games_player2,
                                                played_games_player1, 1), 0)
+
+    @given(st.integers(max_value=-2200), st.integers(),
+           st.integers(),
+           st.integers(),
+           st.one_of(st.just(1), st.just(-1)))
+    @example(-2200, 2000, 0, 0, 1)
+    @example(2000, -2200, 0, 0, 1)
+    def test_minus_2200_bug_workaround(self, rating_player1, rating_player2,
+                                       played_games_player1, played_games_player2, result):
+        """Test workaround for -2200 bug."""
+        with self.assertRaises(ValueError):
+            get_rating_adjustment(rating_player1, rating_player2, played_games_player1,
+                                  played_games_player2, result)
+        with self.assertRaises(ValueError):
+            get_rating_adjustment(rating_player2, rating_player1, played_games_player1,
+                                  played_games_player2, result)
