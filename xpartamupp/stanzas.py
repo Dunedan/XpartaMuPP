@@ -39,7 +39,7 @@ class BoardListXmppPlugin(ElementBase):
     def add_item(self, name, rating):
         """Add an item to the extension.
 
-        Argumnets:
+        Arguments:
             name (str): Name of the player to add
             rating (int): Rating of the player to add
         """
