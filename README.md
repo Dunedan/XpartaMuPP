@@ -29,18 +29,20 @@ Whenever `lobby.wildfiregames.com` is mentioned, it should be replaced by your o
 
 ## ejabberd
 
+These instructions for ejabberd assume you're running a Debian version where at least ejabberd
+17.03 is available (currently Debian Stretch with enabled backports), as that's the minimum
+ejabberd version which is required for the custom ejabberd module to work.
+
+### Install ejabberd
+
 * Install `ejabberd`:
 
-    ```
     $ apt-get install ejabberd
-    ```
 
 * Configure it, by setting the domain name (e.g. `localhost` if you installed it on your
   development computer) and add an admin user.:
 
-    ```
     $ dpkg-reconfigure ejabberd
-    ```
 
 You should now be able to connect to this XMPP server using a normal XMPP client.
 
@@ -89,16 +91,12 @@ The rest of this section should be done by editing `/etc/ejabberd/ejabberd.yml`.
 
 * Check list of registered users:
 
-    ```
     $ ejabberdctl registered_users lobby.wildfiregames.com
-    ```
 
-* `XpartaMuPP` and `EcheLOn` need a user accountsto function, so create them using:
+* `XpartaMuPP` and `EcheLOn` need user accounts to function, so create them using:
 
-    ```
     $ ejabberdctl register echelon lobby.wildfiregames.com secure_password
     $ ejabberdctl register xpartamupp lobby.wildfiregames.com secure_password
-    ```
 
 * The bots also need to be able to get the IPs of users hosting a match, which is what
  `mod_ipstamp` does.
@@ -133,20 +131,26 @@ The rest of this section should be done by editing `/etc/ejabberd/ejabberd.yml`.
         admin: allow
         bots: allow
 
-## XpartaMuPP
+## General bot setup
 
-You need to have python 3 and SleekXmpp installed (tested for 1.3.1, not compatible with 1.0-beta5).
-You will most likely need to use pip to install 1.3.1, as it is not in most default repositories.
+To enable the bot to send the game list to players it needs the JIDs of the players, so the MUC
+room has to be configured as non-anonymous room. In case that you want to host multiple lobby
+rooms adding an ACL for MUC admins to which the bots are added, which is used for `access_admin`
+in the `mod_muc` configuration would be advisable.
 
-    $ sudo apt-get install python3
+You need to have Python 3 and SleekXMPP (>=1.3.1) installed.
 
-If you would like to run the leaderboard database,
+    $ sudo apt-get install python3 python3-sleekxmpp
+
+If you would like to run the leaderboard database, you need to install SQLAlchemy:
 
     $ sudo apt-get install python3-sqlalchemy
 
 Then execute the following command to setup the database.
 
     $ python3 LobbyRanking.py
+
+### XpartaMuPP
 
 Execute the following command to run the bot with default options:
 
@@ -171,9 +175,9 @@ If everything is fine you should see something along these lines in your console
     INFO     Node set to: wfgbot@lobby.wildfiregames.com/CC
     INFO     XpartaMuPP started
 
-Congratulations, you are running XpartaMuPP - the 0ad Multiplayer Game Manager.
+Congratulations, you are now running XpartaMuPP - the 0 A.D. Multiplayer Game Manager.
 
-## EcheLOn
+### EcheLOn
 
 This bot can be thought of as a module of XpartaMuPP in that IQs stanzas sent to XpartaMuPP are
 forwarded onto EcheLOn if its corresponding EcheLOn is online and ignored otherwise. This is by no
