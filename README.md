@@ -1,3 +1,8 @@
+**Update 06/2021: Most of the changes in this repository made it finally upstream. Further development will happen
+at https://github.com/0ad/lobby-bots.**
+
+---
+
 **This repository is a fork of the [multiplayer tools included in 0ad][1] with the goal to
 significantly improve them and make them easier to use for mod-admins to set up alternative game
 lobbies. All of the changes made in this fork are meant to be ported back again to 0ad
